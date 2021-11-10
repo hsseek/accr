@@ -19,7 +19,7 @@ TOO_OLD_DAY = 3
 
 def log(message: str):
     with open(Path.LOG_PATH, 'a') as f:
-        f.write(message + '\n')
+        f.write('%s\t(%s)\n' % (message, __get_str_time()))
     print(message)
 
 
@@ -310,6 +310,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, page: int = 1) -> ():
                             log('#%02d (%s)\t| %s' % (i + 1, likes, title))
 
         log('Page %d took %.2fs.' % (page, __get_elapsed_sec(start_time)))
+        time.sleep(random.uniform(0.5, 2.5))
         page += 1
     return tuple(to_scan)
 
@@ -330,8 +331,7 @@ def process_domain(domain_infos: tuple, page: int = 1):
                 article_url = url + str(article_no)
                 scan_start_time = datetime.now()
                 scan_article(article_url)
-                print('Scanned %d/%d articles(%.1f")' %
-                      (i, len(scan_list), __get_elapsed_sec(scan_start_time)))
+                log('Scanned %d/%d articles(%.1f")' % (i, len(scan_list), __get_elapsed_sec(scan_start_time)))
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
