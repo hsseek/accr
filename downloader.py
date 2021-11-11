@@ -1,0 +1,107 @@
+import os
+import common
+import requests
+
+
+EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
+FILE_NAME_IGNORED_PATTERNS = ('028c715135212dd447915ed16949f7532588d3d95d113cada85703d1ef26',
+                              'fc13c25d018ccbde127b02044b6e4de17f28725faf1b891422ba6878e9f',
+                              'blocked.png')
+
+
+def log(message: str, has_tst: bool = True):
+    with open(Path.LOG_PATH, 'a') as f:
+        if has_tst:
+            message += '\t(%s)' % common.get_str_time()
+        f.write(message + '\n')
+    print(message)
+
+
+def read_from_file(path: str):
+    with open(path) as f:
+        return f.read().strip('\n')
+
+
+class Path:
+    LOG_PATH = read_from_file('LOG_PATH.pv')
+    DOWNLOAD_PATH = read_from_file('DOWNLOAD_PATH.pv')
+    DUMP_PATH = read_from_file('DUMP_PATH.pv')
+
+
+def iterate_source_tags(source_tags, file_name, from_article_url):
+    attribute = None
+    src_attribute = 'src'
+    link_attribute = 'href'
+    content_type_attribute = 'content-type'
+    extension = 'tmp'
+
+    is_numbering = True if len(source_tags) > 1 else False
+    for i, tag in enumerate(source_tags):
+        if tag.has_attr(src_attribute):  # e.g. <img src = "...">
+            attribute = src_attribute
+        elif tag.has_attr(link_attribute):  # e.g. <a href = "...">
+            attribute = link_attribute
+        if attribute:
+            raw_source = tag[attribute].split('?type')[0]
+            source_url = 'https:' + raw_source if raw_source.startswith('//') else raw_source
+            # Check the ignored file name list
+            for ignored_pattern in FILE_NAME_IGNORED_PATTERNS:
+                if ignored_pattern in source_url:
+                    log('Ignored %s.\n(Article: %s' % (source_url, from_article_url))
+                    continue  # Skip this source tag.
+
+            # Retrieve the extension.
+            header = requests.head(source_url).headers
+            if content_type_attribute in header:
+                category, filetype = header[content_type_attribute].split('/')
+                if filetype == 'quicktime':  # 'video/quicktime' represents a mov file.
+                    filetype = 'mov'
+                # Check the file type.
+                if category == 'text':
+                    log('A text link: %s\n(Article: %s)' % (source_url, from_article_url))
+                    continue  # Skip this source tag.
+
+                if filetype in EXTENSION_CANDIDATES:
+                    extension = filetype
+                else:
+                    log('Error: unexpected %s/%s\n(Article: %s)\n(Source: %s)' %
+                        (category, filetype, from_article_url, source_url))
+                    # Try extract the extension from the url. (e.g. https://www.domain.com/video.mp4)
+                    chunk = source_url.split('.')[-1]
+                    if chunk in EXTENSION_CANDIDATES:
+                        extension = chunk
+
+            if extension == 'tmp':  # After all, the extension has not been updated.
+                log('Error: extension cannot be specified.\n(Article: %s)\n(Source: %s)' %
+                    (from_article_url, source_url))
+            print('%s-*.%s on %s' % (file_name, extension, source_url))
+            # Download the file.
+            if is_numbering:
+                download(source_url, '%s-%03d.%s' % (file_name, i, extension))
+            else:
+                download(source_url, '%s.%s' % (file_name, extension))
+        else:
+            log('Error: Tag present, but no source found.\n(Tag: %s)\n(%s: Article)' % (tag, from_article_url))
+
+
+def download(url: str, local_name: str):
+    # Set the absolute path to store the downloaded file.
+    if not os.path.exists(Path.DOWNLOAD_PATH):
+        os.makedirs(Path.DOWNLOAD_PATH)  # create folder if it does not exist
+
+    # Set the download target.
+    r = requests.get(url, stream=True)
+
+    file_path = os.path.join(Path.DOWNLOAD_PATH, local_name)
+    if r.ok:
+        with open(file_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=1024 * 8):
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
+                    os.fsync(f.fileno())
+    else:  # HTTP status code 4XX/5XX
+        log("Error: Download failed.(status code {}\n{})".format(r.status_code, r.text), True)
+
+    if local_name.endswith('webp'):
+        common.convert_webp_to_png(Path.DOWNLOAD_PATH, local_name)
