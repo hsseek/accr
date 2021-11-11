@@ -64,7 +64,6 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
     content_type_attribute = 'content-type'
     extension = 'tmp'
 
-    is_numbering = True if len(source_tags) > 1 else False
     for i, tag in enumerate(source_tags):
         if tag.has_attr(src_attribute):  # e.g. <img src = "...">
             attribute = src_attribute
@@ -107,10 +106,7 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
                     (from_article_url, source_url))
             print('%s-*.%s on %s' % (file_name, extension, source_url))
             # Download the file.
-            if is_numbering:
-                downloader.download(source_url, '%s-%03d.%s' % (file_name, i, extension))
-            else:
-                downloader.download(source_url, '%s.%s' % (file_name, extension))
+            downloader.download(source_url, '%s-%03d.%s' % (file_name, i, extension))
         else:
             log('Error: Tag present, but no source found.\n(Tag: %s)\n(%s: Article)' % (tag, from_article_url))
 

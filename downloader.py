@@ -81,10 +81,7 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
                     (from_article_url, source_url))
             print('%s-*.%s on %s' % (file_name, extension, source_url))
             # Download the file.
-            if is_numbering:
-                download(source_url, '%s-%03d.%s' % (file_name, i, extension))
-            else:
-                download(source_url, '%s.%s' % (file_name, extension))
+            download(source_url, '%s-%03d.%s' % (file_name, i, extension))
 
 
 def download(url: str, local_name: str):
