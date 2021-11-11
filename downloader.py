@@ -32,7 +32,6 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
     content_type_attribute = 'content-type'
     extension = 'tmp'
 
-    is_numbering = True if len(source_tags) > 1 else False
     for i, tag in enumerate(source_tags):
         raw_sources = []  # All the sources included in the tag
         if tag.has_attr(src_attribute):  # e.g. <img src = "...">
@@ -76,10 +75,11 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
                 else:
                     log('Error: unexpected %s/%s\n(Article: %s)\n(Source: %s)' %
                         (category, filetype, from_article_url, source_url))
-                    # Try extract the extension from the url. (e.g. https://www.domain.com/video.mp4)
-                    chunk = source_url.split('.')[-1]
-                    if chunk in EXTENSION_CANDIDATES:
-                        extension = chunk
+            else:
+                # Try extract the extension from the url. (e.g. https://www.domain.com/video.mp4)
+                chunk = source_url.split('.')[-1]
+                if chunk in EXTENSION_CANDIDATES:
+                    extension = chunk
 
             if extension == 'tmp':  # After all, the extension has not been updated.
                 log('Error: extension cannot be specified.\n(Article: %s)\n(Source: %s)' %

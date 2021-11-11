@@ -9,9 +9,6 @@ from bs4 import BeautifulSoup
 
 HTML_PARSER = 'html.parser'
 EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
-FILE_NAME_IGNORED_PATTERNS = ('028c715135212dd447915ed16949f7532588d3d95d113cada85703d1ef26',
-                              'fc13c25d018ccbde127b02044b6e4de17f28725faf1b891422ba6878e9f',
-                              'blocked.png')
 TITLE_IGNORED_PATTERNS = ('코스프레', '코스어')
 TOO_YOUNG_DAY = 0
 TOO_OLD_DAY = 2
@@ -139,5 +136,5 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-# time.sleep(random.uniform(60, 2100))
+time.sleep(random.uniform(60, 2100))
 process_domain(ROOT_DOMAIN, scanning_span=5, starting_page=1)
