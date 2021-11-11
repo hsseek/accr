@@ -122,9 +122,8 @@ def scan_article(url: str):
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
 
-def get_entries_to_scan(placeholder: str, min_likes: int, page: int = 1) -> ():
-    pages_to_scan = min_likes * 2 + 3
-    max_page = page + pages_to_scan - 1  # To prevent infinite looping
+def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, page: int = 1) -> ():
+    max_page = page + scanning_span - 1  # To prevent infinite looping
     to_scan = []
     has_regular_row = True  # True for the first page
 
@@ -175,7 +174,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, page: int = 1) -> ():
     return tuple(to_scan)
 
 
-def process_domain(domain_infos: tuple, starting_page: int = 1):
+def process_domain(domain_infos: tuple, scanning_span: int, starting_page: int = 1):
     try:
         for domain_info in domain_infos:
             domain_start_time = datetime.now()
@@ -183,7 +182,7 @@ def process_domain(domain_infos: tuple, starting_page: int = 1):
             min_likes = int(domain_info[1])
             log('Looking up %s.' % url)
             page_index = '?cut=%d&p=' % min_likes
-            scan_list = get_entries_to_scan(url + page_index, min_likes, starting_page)
+            scan_list = get_entries_to_scan(url + page_index, min_likes, scanning_span, starting_page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
                 pause = random.uniform(3, 6)
                 print('Pause for %.1f.' % pause)
@@ -201,6 +200,6 @@ def process_domain(domain_infos: tuple, starting_page: int = 1):
 
 
 time.sleep(random.uniform(60, 2100))
-process_domain(NORMAL_DOMAIN_INFOS)
+process_domain(NORMAL_DOMAIN_INFOS, scanning_span=10, starting_page=1)
 time.sleep(random.uniform(30, 180))
-process_domain(PROXY_DOMAIN_INFOS)
+process_domain(PROXY_DOMAIN_INFOS, scanning_span=10, starting_page=1)

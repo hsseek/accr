@@ -28,7 +28,7 @@ LOG_PATH = common.read_from_file('52_LOG_PATH.pv')
 
 
 def __get_local_name(doc_title, url):
-    doc_id = url.split('srl=')[-1]  # The document id(e.g. '373719')
+    doc_id = url.split('/')[-1]  # The document id(e.g. '373719')
     try:
         title = doc_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
         return title + '-' + doc_id
@@ -76,9 +76,8 @@ def scan_article(url: str):
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
 
-def get_entries_to_scan(placeholder: str, page: int = 1) -> ():
-    pages_to_scan = 4
-    max_page = page + pages_to_scan - 1  # To prevent infinite looping
+def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> ():
+    max_page = page + scanning_span - 1  # To prevent infinite looping
     to_scan = []
 
     while page <= max_page:  # Page-wise
@@ -118,14 +117,14 @@ def get_entries_to_scan(placeholder: str, page: int = 1) -> ():
     return tuple(to_scan)
 
 
-def process_domain(domains: tuple, starting_page: int = 1):
+def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
     try:
         for domain in domains:
             domain_start_time = datetime.now()
             url = domain
             log('Looking up %s.' % url)
             page_index = 'index.php?mid=post&page='
-            scan_list = get_entries_to_scan(url + page_index, starting_page)
+            scan_list = get_entries_to_scan(url + page_index, scanning_span, starting_page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
                 pause = random.uniform(3, 6)
                 print('Pause for %.1f.' % pause)
@@ -141,5 +140,4 @@ def process_domain(domains: tuple, starting_page: int = 1):
 
 
 # time.sleep(random.uniform(60, 2100))
-# process_domain(ROOT_DOMAIN, starting_page=1)
-scan_article('http://www.red52.kr/index.php?mid=post&page=2&document_srl=29478')
+process_domain(ROOT_DOMAIN, scanning_span=5, starting_page=1)

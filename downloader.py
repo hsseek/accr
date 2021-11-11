@@ -58,7 +58,12 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
             # Retrieve the extension.
             header = requests.head(source_url).headers
             if content_type_attribute in header:
-                category, filetype = header[content_type_attribute].split('/')
+                header = header[content_type_attribute]
+                try:
+                    category, filetype = header.split('/')
+                except ValueError:
+                    filetype = header
+                    category = None
                 if filetype == 'quicktime':  # 'video/quicktime' represents a mov file.
                     filetype = 'mov'
                 # Check the file type.
