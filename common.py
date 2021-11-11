@@ -18,7 +18,7 @@ def read_from_file(path: str):
         return f.read().strip('\n')
 
 
-def __get_date_difference(tst_str: str) -> int:
+def get_date_difference(tst_str: str) -> int:
     try:
         date = datetime.strptime(tst_str, '%Y.%m.%d')  # 2021.11.07
         now = datetime.now()

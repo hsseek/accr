@@ -30,15 +30,6 @@ def get_tor_session():
     return req
 
 
-def __get_date_difference(tst_str: str) -> int:
-    try:
-        date = datetime.strptime(tst_str, '%Y.%m.%d')  # 2021.11.07
-        now = datetime.now()
-        return (now - date).days
-    except Exception as e:
-        print('(%s) The timestamp did not match the format: %s.' % (e, tst_str))
-
-
 def __get_local_name(doc_title, url):
     doc_id = url.split('/')[-1].split('?')[0]  # The document id(e.g. '373719')
     try:
@@ -155,7 +146,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, page: int = 1) -> ():
                 if ':' in tst_str:  # Not mature: less than 24 hours.
                     continue  # Move to the next row
                 else:
-                    day_diff = __get_date_difference(tst_str)
+                    day_diff = common.get_date_difference(tst_str)
                     if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                         continue  # Move to the next row
                     elif day_diff >= TOO_OLD_DAY:  # Too old.

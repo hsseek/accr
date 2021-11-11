@@ -1,4 +1,3 @@
-import os
 import downloader
 import common
 import random
@@ -7,7 +6,6 @@ import traceback
 from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
-from PIL import Image
 
 HTML_PARSER = 'html.parser'
 EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
@@ -27,42 +25,6 @@ def log(message: str, has_tst: bool = True):
 ROOT_DOMAIN = common.build_tuple('52_DOMAINS.pv')
 IGNORED_DOMAINS = common.build_tuple('52_IGNORED_DOMAINS.pv')
 LOG_PATH = common.read_from_file('52_LOG_PATH.pv')
-
-
-def convert_webp_to_png(stored_dir, filename):
-    ext = 'png'
-    stored_path = os.path.join(stored_dir, filename)
-    img = Image.open(stored_path).convert("RGB")
-    new_filename = __split_on_last_pattern(filename, '.')[0] + '.' + ext
-    new_path = os.path.join(stored_dir, new_filename)
-    img.save(new_path, ext)
-    os.remove(stored_path)
-
-
-def __get_elapsed_sec(start_time) -> float:
-    end_time = datetime.now()
-    return (end_time - start_time).total_seconds()
-
-
-# Split on the pattern, but always returning a list with length of 2.
-def __split_on_last_pattern(string: str, pattern: str) -> ():
-    last_piece = string.split(pattern)[-1]  # domain.com/image.jpg -> jpg
-    leading_chunks = string.split(pattern)[:-1]  # [domain, com/image]
-    leading_piece = pattern.join(leading_chunks)  # domain.com/image
-    return leading_piece, last_piece  # (domain.com/image, jpg)
-
-
-def __get_str_time() -> str:
-    return str(datetime.now()).split('.')[0]
-
-
-def __get_date_difference(tst_str: str) -> int:
-    try:
-        date = datetime.strptime(tst_str, '%Y.%m.%d')  # 2021.11.07
-        now = datetime.now()
-        return (now - date).days
-    except Exception as tst_name_exception:
-        print(tst_name_exception)
 
 
 def __get_local_name(doc_title, url):
@@ -183,13 +145,13 @@ def get_entries_to_scan(placeholder: str, page: int = 1) -> ():
 
         for i, row in enumerate(rows):  # Inspect the rows
             tst_str = row.select_one('div.wz-item-meta > span > span.date').string
-            day_diff = __get_date_difference(tst_str)
+            day_diff = common.get_date_difference(tst_str)
             if day_diff:
                 if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                     continue  # Move to the next row
                 elif day_diff >= TOO_OLD_DAY:  # Too old.
                     # No need to scan older rows.
-                    log('Page %d took %.2fs. Stop searching.\n' % (page, __get_elapsed_sec(start_time)), False)
+                    log('Page %d took %.2fs. Stop searching.\n' % (page, common.get_elapsed_sec(start_time)), False)
                     return tuple(to_scan)
                 else:  # Mature
                     try:
@@ -206,7 +168,7 @@ def get_entries_to_scan(placeholder: str, page: int = 1) -> ():
                         article_url = row.select_one('a.ab-link')['href'].split('=')[-1]
                         to_scan.append(article_url)
                         log('#%02d | %s' % (i + 1, title), False)
-        log('Page %d took %.2fs.' % (page, __get_elapsed_sec(start_time)), False)
+        log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)), False)
         time.sleep(random.uniform(0.5, 2.5))
         page += 1
     return tuple(to_scan)
@@ -228,8 +190,8 @@ def process_domain(domains: tuple, starting_page: int = 1):
                 article_url = url + 'post/' + str(article_no)
                 scan_start_time = datetime.now()
                 scan_article(article_url)
-                log('Scanned %d/%d articles(%.1f")' % (i + 1, len(scan_list), __get_elapsed_sec(scan_start_time)))
-            log('Finished scanning %s in %d min.' % (url, int(__get_elapsed_sec(domain_start_time) / 60)))
+                log('Scanned %d/%d articles(%.1f")' % (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
+            log('Finished scanning %s in %d min.' % (url, int(common.get_elapsed_sec(domain_start_time) / 60)))
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
