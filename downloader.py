@@ -1,4 +1,5 @@
 import os
+from PIL import Image
 import common
 import requests
 
@@ -10,22 +11,18 @@ FILE_NAME_IGNORED_PATTERNS = ('028c715135212dd447915ed16949f7532588d3d95d113cada
 
 
 def log(message: str, has_tst: bool = True):
-    with open(Path.LOG_PATH, 'a') as f:
-        if has_tst:
-            message += '\t(%s)' % common.get_str_time()
-        f.write(message + '\n')
-    print(message)
+    path = common.read_from_file('DL_LOG_PATH.pv')
+    common.log(message, path, has_tst)
 
 
-def read_from_file(path: str):
-    with open(path) as f:
-        return f.read().strip('\n')
-
-
-class Path:
-    LOG_PATH = read_from_file('LOG_PATH.pv')
-    DOWNLOAD_PATH = read_from_file('DOWNLOAD_PATH.pv')
-    DUMP_PATH = read_from_file('DUMP_PATH.pv')
+def convert_webp_to_png(stored_dir, filename):
+    ext = 'png'
+    stored_path = os.path.join(stored_dir, filename)
+    img = Image.open(stored_path).convert("RGB")
+    new_filename = common.split_on_last_pattern(filename, '.')[0] + '.' + ext
+    new_path = os.path.join(stored_dir, new_filename)
+    img.save(new_path, ext)
+    os.remove(stored_path)
 
 
 def iterate_source_tags(source_tags, file_name, from_article_url):
@@ -86,13 +83,13 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
 
 def download(url: str, local_name: str):
     # Set the absolute path to store the downloaded file.
-    if not os.path.exists(Path.DOWNLOAD_PATH):
-        os.makedirs(Path.DOWNLOAD_PATH)  # create folder if it does not exist
+    if not os.path.exists(common.DOWNLOAD_PATH):
+        os.makedirs(common.DOWNLOAD_PATH)  # create folder if it does not exist
 
     # Set the download target.
     r = requests.get(url, stream=True)
 
-    file_path = os.path.join(Path.DOWNLOAD_PATH, local_name)
+    file_path = os.path.join(common.DOWNLOAD_PATH, local_name)
     if r.ok:
         with open(file_path, 'wb') as f:
             for chunk in r.iter_content(chunk_size=1024 * 8):
@@ -104,4 +101,4 @@ def download(url: str, local_name: str):
         log("Error: Download failed.(status code {}\n{})".format(r.status_code, r.text), True)
 
     if local_name.endswith('webp'):
-        common.convert_webp_to_png(Path.DOWNLOAD_PATH, local_name)
+        convert_webp_to_png(common.DOWNLOAD_PATH, local_name)

@@ -17,6 +17,11 @@ PROXY_DOMAIN_INFOS = common.build_tuple_of_tuples('AC_PROXY_DOMAINS.pv')
 IGNORED_DOMAINS = common.build_tuple('AC_IGNORED_DOMAINS.pv')
 
 
+def log(message: str, has_tst: bool = True):
+    path = common.read_from_file('AC_LOG_PATH.pv')
+    common.log(message, path, has_tst)
+
+
 def get_tor_session():
     req = requests.session()
     # Tor uses the 9050 port as the default socks port
@@ -40,7 +45,7 @@ def __get_local_name(doc_title, url):
         title = doc_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
         return title + '-' + doc_id
     except Exception as filename_exception:
-        common.log('Error: cannot format filename %s. (%s)' % (doc_title, filename_exception))
+        log('Error: cannot format filename %s. (%s)' % (doc_title, filename_exception))
         return doc_id
 
 
@@ -61,9 +66,15 @@ def __get_free_proxies():
     return proxies
 
 
-def get_proxy_soup(url: str) -> BeautifulSoup:
-    free_proxy_list = __get_free_proxies()
+def get_article_soup(url: str) -> BeautifulSoup:
     session = requests.session()
+    soup = BeautifulSoup(session.get(url).text, HTML_PARSER)
+    if not soup.select_one('div.article-body > div.text-muted'):
+        # No need to configure proxy.
+        print('Article content accessible. Do not configure proxy.')
+        return soup
+
+    free_proxy_list = __get_free_proxies()
     for i, proxy in enumerate(free_proxy_list):
         try:
             session.proxies = {'http': 'http://' + proxy,
@@ -80,8 +91,8 @@ def __get_ip(session: requests.Session) -> str:
     return session.get("http://httpbin.org/ip").text.split('"')[-2]
 
 
-def scan_article(url: str, proxy=False):
-    soup = BeautifulSoup(requests.get(url).text, HTML_PARSER) if not proxy else get_proxy_soup(url)
+def scan_article(url: str):
+    soup = get_article_soup(url)
     article_title_long = soup.select_one('head > title').string
     article_title_short = common.split_on_last_pattern(article_title_long, ' - ')[0].strip()
     local_name = __get_local_name(article_title_short, url)
@@ -93,14 +104,14 @@ def scan_article(url: str, proxy=False):
         try:
             downloader.iterate_source_tags(img_source_tags, local_name + DOMAIN_TAG + '-i', url)
         except Exception as img_source_exception:
-            common.log('Error: %s\n%s\n[Traceback]\n%s' % (img_source_exception, url, traceback.format_exc()))
+            log('Error: %s\n%s\n[Traceback]\n%s' % (img_source_exception, url, traceback.format_exc()))
 
     video_source_tags = soup.select(body_css_selector + 'video')
     if video_source_tags:  # Videos present
         try:
             downloader.iterate_source_tags(video_source_tags, local_name + DOMAIN_TAG + '-v', url)
         except Exception as video_source_exception:
-            common.log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
+            log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
     link_tags = soup.select(body_css_selector + 'a')
     link_attr = 'href'
@@ -117,7 +128,7 @@ def scan_article(url: str, proxy=False):
         try:
             downloader.iterate_source_tags(external_link_tags, local_name + DOMAIN_TAG + '-a', url)
         except Exception as video_source_exception:
-            common.log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
+            log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
 
 def get_entries_to_scan(placeholder: str, min_likes: int, page: int = 1) -> ():
@@ -149,8 +160,8 @@ def get_entries_to_scan(placeholder: str, min_likes: int, page: int = 1) -> ():
                         continue  # Move to the next row
                     elif day_diff >= TOO_OLD_DAY:  # Too old.
                         # No need to scan older rows.
-                        common.log('Page %d took %.2fs. Stop searching.\n' %
-                                   (page, common.get_elapsed_sec(start_time)), False)
+                        log('Page %d took %.2fs. Stop searching.\n' %
+                            (page, common.get_elapsed_sec(start_time)), False)
                         return tuple(to_scan)
                     else:  # Mature
                         if int(likes) >= min_likes:  # Compare likes first: a cheaper process
@@ -158,16 +169,16 @@ def get_entries_to_scan(placeholder: str, min_likes: int, page: int = 1) -> ():
                                 title = row.select_one('div.vrow-top > span.vcol > span.title').contents[0].strip()
                             except Exception as title_exception:
                                 title = '%05d' % random.randint(1, 99999)
-                                common.log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
+                                log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
                                     (i + 1, title_exception, url))
                             for pattern in TITLE_IGNORED_PATTERNS:  # Compare the string pattern: the most expensive
                                 if pattern in title:
-                                    common.log('#%02d (%s)\t| (ignored) %s' % (i + 1, likes, title), False)
+                                    log('#%02d (%s)\t| (ignored) %s' % (i + 1, likes, title), False)
                                     break
                             else:
                                 to_scan.append(row['href'].split('?')[0].split('/')[-1])
-                                common.log('#%02d (%s)\t| %s' % (i + 1, likes, title))
-        common.log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)), False)
+                                log('#%02d (%s)\t| %s' % (i + 1, likes, title))
+        log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)), False)
         time.sleep(random.uniform(0.5, 2.5))
         page += 1
     return tuple(to_scan)
@@ -179,7 +190,7 @@ def process_domain(domain_infos: tuple, page: int = 1):
             domain_start_time = datetime.now()
             url = domain_info[0]
             min_likes = int(domain_info[1])
-            common.log('Looking up %s.' % url)
+            log('Looking up %s.' % url)
             page_index = '?cut=%d&p=' % min_likes
             scan_list = get_entries_to_scan(url + page_index, min_likes, page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
@@ -190,12 +201,12 @@ def process_domain(domain_infos: tuple, page: int = 1):
                 article_url = url + str(article_no)
                 scan_start_time = datetime.now()
                 scan_article(article_url)
-                common.log('Scanned %d/%d articles(%.1f")' %
-                           (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
-            common.log('Finished scanning %s in %d min.' %
-                       (url, int(common.get_elapsed_sec(domain_start_time) / 60)))
+                log('Scanned %d/%d articles(%.1f")' %
+                    (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
+            log('Finished scanning %s in %d min.' %
+                (url, int(common.get_elapsed_sec(domain_start_time) / 60)))
     except Exception as normal_domain_exception:
-        common.log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
+        log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
 time.sleep(random.uniform(60, 2100))

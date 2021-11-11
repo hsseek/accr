@@ -1,10 +1,8 @@
 from datetime import datetime
-import os
-from PIL import Image
 
 
-def log(message: str, has_tst: bool = True):
-    with open(LOG_PATH, 'a') as f:
+def log(message: str, path: str, has_tst: bool = True):
+    with open(path, 'a') as f:
         if has_tst:
             message += '\t(%s)' % get_str_time()
         f.write(message + '\n')
@@ -42,16 +40,6 @@ def build_tuple_of_tuples(path: str):
     return tuple(info)
 
 
-def convert_webp_to_png(stored_dir, filename):
-    ext = 'png'
-    stored_path = os.path.join(stored_dir, filename)
-    img = Image.open(stored_path).convert("RGB")
-    new_filename = split_on_last_pattern(filename, '.')[0] + '.' + ext
-    new_path = os.path.join(stored_dir, new_filename)
-    img.save(new_path, ext)
-    os.remove(stored_path)
-
-
 def get_elapsed_sec(start_time) -> float:
     end_time = datetime.now()
     return (end_time - start_time).total_seconds()
@@ -65,6 +53,5 @@ def split_on_last_pattern(string: str, pattern: str) -> ():
     return leading_piece, last_piece  # (domain.com/image, jpg)
 
 
-LOG_PATH = read_from_file('LOG_PATH.pv')
 DOWNLOAD_PATH = read_from_file('DOWNLOAD_PATH.pv')
 DUMP_PATH = read_from_file('DUMP_PATH.pv')
