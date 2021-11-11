@@ -5,6 +5,8 @@ from glob import glob
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support.wait import WebDriverWait
 
 import common
 import random
@@ -85,7 +87,7 @@ def get_size(start_path: str):
 def wait_for_downloading(temp_dir_path: str, loading_sec: float):
     seconds = 0
     check_interval = 1
-    timeout = int(loading_sec * 3)
+    timeout = max(30, int(loading_sec * 5))
 
     last_size = 0
     while seconds < timeout:
@@ -103,7 +105,8 @@ def wait_for_downloading(temp_dir_path: str, loading_sec: float):
         time.sleep(check_interval)
         seconds += check_interval
     else:
-        return True
+        return False  # Timeout reached.
+    return True
 
 
 def scan_article(url: str):
@@ -122,33 +125,35 @@ def scan_article(url: str):
     downloading_browser = initiate_browser(temp_download_path)
     btn_class_name = 'btn_file_dw'
     try:
+        successful = True
         start_time = datetime.now()
         downloading_browser.get(url)
-        print('Processing %s' % url)
+        log('Processing %s' % url)
 
         loading_sec = common.get_elapsed_sec(start_time)
-        download_failed = False
         try:
+            wait = WebDriverWait(browser, 15)
+            wait.until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, btn_class_name)))
             downloading_browser.find_element(By.CLASS_NAME, btn_class_name).click()
             print('Download button located.')
-            download_failed = wait_for_downloading(temp_download_path, loading_sec)
+            successful = wait_for_downloading(temp_download_path, loading_sec)
         except:
             try:
                 downloading_browser.find_element(
                     By.XPATH, '/html/body/div[2]/div[2]/main/section/article[2]/div[1]/div/div[6]/ul/li/a'
                 ).click()
-                download_failed = wait_for_downloading(temp_download_path, loading_sec)
+                successful = wait_for_downloading(temp_download_path, loading_sec)
             except:
                 try:
                     downloading_browser.find_element(
                         By.XPATH, '//*[@id="container"]/section/article[2]/div[1]/div/div[7]/ul/li/a'
                     ).click()
-                    download_failed = wait_for_downloading(temp_download_path, loading_sec)
+                    successful = wait_for_downloading(temp_download_path, loading_sec)
                 except:
                     log('Error: Cannot locate the download button.')
 
-        if download_failed:
-            log('Error: Download timeout.(%s)' % url)
+        if not successful:
+            log('Error: Download timeout reached.(%s)' % url)
 
         local_name = __get_local_name(article_title, url)
         DOMAIN_TAG = '-dc-'
