@@ -2,12 +2,9 @@ import os
 import zipfile
 from glob import glob
 
-import selenium.common.exceptions
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions
-from selenium.webdriver.support.wait import WebDriverWait
 
 import common
 import random
@@ -67,9 +64,9 @@ def initiate_browser(download_path: str):
         "download.default_directory": download_path,
         "download.prompt_for_download": False
     })
-    # options.add_argument('headless')
-    # options.add_argument('disable-gpu')
-    options.add_experimental_option("detach", True)
+    options.add_argument('headless')
+    options.add_argument('disable-gpu')
+    # options.add_experimental_option("detach", True)
     driver = webdriver.Chrome(service=service, options=options)
     return driver
 
@@ -143,10 +140,13 @@ def scan_article(url: str):
                 ).click()
                 download_failed = wait_for_downloading(temp_download_path, loading_sec)
             except:
-                downloading_browser.find_element(
-                    By.XPATH, '//*[@id="container"]/section/article[2]/div[1]/div/div[7]/ul/li/a'
-                ).click()
-                download_failed = wait_for_downloading(temp_download_path, loading_sec)
+                try:
+                    downloading_browser.find_element(
+                        By.XPATH, '//*[@id="container"]/section/article[2]/div[1]/div/div[7]/ul/li/a'
+                    ).click()
+                    download_failed = wait_for_downloading(temp_download_path, loading_sec)
+                except:
+                    log('Error: Cannot locate the download button.')
 
         if download_failed:
             log('Error: Download timeout.(%s)' % url)
