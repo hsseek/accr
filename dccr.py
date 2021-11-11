@@ -89,7 +89,6 @@ def wait_for_downloading(temp_dir_path: str, loading_sec: float):
 
     last_size = 0
     while seconds < timeout:
-        print(get_size(temp_dir_path))
         while get_size(temp_dir_path) == 0 and seconds < timeout:
             print('Waiting to start downloading.(%d/%d)' % (seconds, timeout))
             time.sleep(check_interval)
@@ -161,11 +160,26 @@ def scan_article(url: str):
                 zip_ref.extractall(temp_download_path)
             os.remove(zip_file_path)
 
+        # Convert webp files.
+        for file_name in os.listdir(temp_download_path):  # The file name might have been changed.
+            if file_name.endswith('.webp'):
+                common.convert_webp_to_png(temp_download_path, file_name)
+
         # Rename the file(s).
         for file_name in os.listdir(temp_download_path):  # List only file names.
-            os.rename(temp_download_path + file_name, DOWNLOAD_PATH + local_name + DOMAIN_TAG + file_name)
+            if len(file_name) < 50:
+                os.rename(temp_download_path + file_name, DOWNLOAD_PATH + local_name + DOMAIN_TAG + file_name)
+            else:
+                long_name, extension = common.split_on_last_pattern(file_name, '.')
+                os.rename(temp_download_path + file_name, DOWNLOAD_PATH + local_name + DOMAIN_TAG +
+                          long_name[:50] + '.' + extension)
+                print('Truncate a long name: %s' % long_name)
+
+        # If the folder is empty, remove it.
         if not len(os.listdir(temp_download_path)):
             os.rmdir(temp_download_path)
+    except Exception as download_exception:
+        log('Error: cannot process download.(%s)' % download_exception)
     finally:
         downloading_browser.quit()
 
@@ -242,6 +256,7 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
 
 browser = initiate_browser(DOWNLOAD_PATH)
 try:
+    time.sleep(random.uniform(60, 2100))
     process_domain(GALLERY_DOMAINS, scanning_span=5, starting_page=1)
 finally:
     browser.quit()

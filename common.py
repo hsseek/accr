@@ -1,4 +1,6 @@
+from PIL import Image
 from datetime import datetime
+import os
 from bs4 import BeautifulSoup
 import requests
 
@@ -87,6 +89,16 @@ def build_tuple_of_tuples(path: str):
 def get_elapsed_sec(start_time) -> float:
     end_time = datetime.now()
     return (end_time - start_time).total_seconds()
+
+
+def convert_webp_to_png(stored_dir, filename):
+    ext = 'png'
+    stored_path = os.path.join(stored_dir, filename)
+    img = Image.open(stored_path).convert("RGB")
+    new_filename = split_on_last_pattern(filename, '.')[0] + '.' + ext
+    new_path = os.path.join(stored_dir, new_filename)
+    img.save(new_path, ext)
+    os.remove(stored_path)
 
 
 # Split on the pattern, but always returning a list with length of 2.
