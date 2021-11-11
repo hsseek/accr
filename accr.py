@@ -114,39 +114,43 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
         has_regular_row = False
 
         for i, row in enumerate(rows):  # Inspect the rows
-            likes_tag = row.select_one('div.vrow-bottom > span.col-rate')
-            if not likes_tag:  # Unified notices or other irregular rows.
-                continue
-            likes = row.select_one('div.vrow-bottom > span.col-rate').string
-            if not likes.isspace():
-                has_regular_row = True
-                tst_str = row.select_one('div.vrow-bottom time').string
-                if ':' in tst_str:  # Not mature: less than 24 hours.
-                    continue  # Move to the next row
-                else:
-                    day_diff = common.get_date_difference(tst_str)
-                    if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+            try:
+                likes_tag = row.select_one('div.vrow-bottom > span.col-rate')
+                if not likes_tag:  # Unified notices or other irregular rows.
+                    continue
+                likes = row.select_one('div.vrow-bottom > span.col-rate').string
+                if not likes.isspace():
+                    has_regular_row = True
+                    tst_str = row.select_one('div.vrow-bottom time').string
+                    if ':' in tst_str:  # Not mature: less than 24 hours.
                         continue  # Move to the next row
-                    elif day_diff >= TOO_OLD_DAY:  # Too old.
-                        # No need to scan older rows.
-                        log('Page %d took %.2fs. Stop searching.\n' %
-                            (page, common.get_elapsed_sec(start_time)), False)
-                        return tuple(to_scan)
-                    else:  # Mature
-                        if int(likes) >= min_likes:  # Compare likes first: a cheaper process
-                            try:
-                                title = row.select_one('div.vrow-top > span.vcol > span.title').contents[0].strip()
-                            except Exception as title_exception:
-                                title = '%05d' % random.randint(1, 99999)
-                                log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
-                                    (i + 1, title_exception, url))
-                            for pattern in TITLE_IGNORED_PATTERNS:  # Compare the string pattern: the most expensive
-                                if pattern in title:
-                                    log('#%02d (%s)\t| (ignored) %s' % (i + 1, likes, title), False)
-                                    break
-                            else:
-                                to_scan.append(row['href'].split('?')[0].split('/')[-1])
-                                log('#%02d (%s)\t| %s' % (i + 1, likes, title))
+                    else:
+                        day_diff = common.get_date_difference(tst_str)
+                        if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                            continue  # Move to the next row
+                        elif day_diff >= TOO_OLD_DAY:  # Too old.
+                            # No need to scan older rows.
+                            log('Page %d took %.2fs. Stop searching.\n' %
+                                (page, common.get_elapsed_sec(start_time)), False)
+                            return tuple(to_scan)
+                        else:  # Mature
+                            if int(likes) >= min_likes:  # Compare likes first: a cheaper process
+                                try:
+                                    title = row.select_one('div.vrow-top > span.vcol > span.title').contents[0].strip()
+                                except Exception as title_exception:
+                                    title = '%05d' % random.randint(1, 99999)
+                                    log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
+                                        (i + 1, title_exception, url))
+                                for pattern in TITLE_IGNORED_PATTERNS:  # Compare the string pattern: the most expensive
+                                    if pattern in title:
+                                        log('#%02d (%s)\t| (ignored) %s' % (i + 1, likes, title), False)
+                                        break
+                                else:
+                                    to_scan.append(row['href'].split('?')[0].split('/')[-1])
+                                    log('#%02d (%s)\t| %s' % (i + 1, likes, title))
+            except Exception as row_exception:
+                log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
+                continue
         log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)), False)
         time.sleep(random.uniform(0.5, 2.5))
         page += 1

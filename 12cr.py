@@ -161,30 +161,34 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
         rows = soup.select('div.list-board > ul.list-body > li.list-item')
 
         for i, row in enumerate(rows):  # Inspect the rows
-            tst_str = row.select_one('div.wr-date').string
-            day_diff = __get_date_difference(tst_str)
-            if day_diff:
-                if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
-                    continue  # Move to the next row
-                elif day_diff >= TOO_OLD_DAY:  # Too old.
-                    # No need to scan older rows.
-                    log('Page %d took %.2fs. Stop searching.\n' % (page, common.get_elapsed_sec(start_time)), False)
-                    return tuple(to_scan)
-                else:  # Mature
-                    try:
-                        title = row.select_one('div.wr-subject > a > span.wr-num').next_sibling.strip()
-                    except Exception as title_exception:
-                        title = '%05d' % random.randint(1, 99999)
-                        log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
-                            (i + 1, title_exception, url))
-                    for pattern in TITLE_IGNORED_PATTERNS:  # Compare the string pattern: the most expensive
-                        if pattern in title:
-                            log('#%02d | (ignored) %s' % (i + 1, title), False)
-                            break
-                    else:
-                        article_url = row.select_one('div.wr-subject > a')['href'].split('id=')[-1].split('&')[0]
-                        to_scan.append(article_url)
-                        log('#%02d | %s' % (i + 1, title), False)
+            try:
+                tst_str = row.select_one('div.wr-date').string
+                day_diff = __get_date_difference(tst_str)
+                if day_diff:
+                    if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                        continue  # Move to the next row
+                    elif day_diff >= TOO_OLD_DAY:  # Too old.
+                        # No need to scan older rows.
+                        log('Page %d took %.2fs. Stop searching.\n' % (page, common.get_elapsed_sec(start_time)), False)
+                        return tuple(to_scan)
+                    else:  # Mature
+                        try:
+                            title = row.select_one('div.wr-subject > a > span.wr-num').next_sibling.strip()
+                        except Exception as title_exception:
+                            title = '%05d' % random.randint(1, 99999)
+                            log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
+                                (i + 1, title_exception, url))
+                        for pattern in TITLE_IGNORED_PATTERNS:  # Compare the string pattern: the most expensive
+                            if pattern in title:
+                                log('#%02d | (ignored) %s' % (i + 1, title), False)
+                                break
+                        else:
+                            article_url = row.select_one('div.wr-subject > a')['href'].split('id=')[-1].split('&')[0]
+                            to_scan.append(article_url)
+                            log('#%02d | %s' % (i + 1, title), False)
+            except Exception as row_exception:
+                log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
+                continue
         log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)), False)
         time.sleep(random.uniform(0.5, 2.5))
         page += 1
@@ -195,20 +199,19 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
     try:
         for domain in domains:
             domain_start_time = datetime.now()
-            url = domain
-            log('Looking up %s.' % url)
+            log('Looking up %s.' % domain)
             page_index = '/bbs/board.php?bo_table=gal01&page='
-            scan_list = get_entries_to_scan(url + page_index, scanning_span, starting_page)
+            scan_list = get_entries_to_scan(domain + page_index, scanning_span, starting_page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
                 pause = random.uniform(3, 6)
                 print('Pause for %.1f.' % pause)
                 time.sleep(pause)
 
-                article_url = url + '/bbs/board.php?bo_table=gal01&wr_id=' + str(article_no)
+                article_url = domain + '/bbs/board.php?bo_table=gal01&wr_id=' + str(article_no)
                 scan_start_time = datetime.now()
                 scan_article(article_url)
                 log('Scanned %d/%d articles(%.1f")' % (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
-            log('Finished scanning %s in %d min.' % (url, int(common.get_elapsed_sec(domain_start_time) / 60)))
+            log('Finished scanning %s in %d min.' % (domain, int(common.get_elapsed_sec(domain_start_time) / 60)))
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
