@@ -26,20 +26,28 @@ def convert_webp_to_png(stored_dir, filename):
 
 
 def iterate_source_tags(source_tags, file_name, from_article_url):
-    attribute = None
     src_attribute = 'src'
     link_attribute = 'href'
+    source_tag = 'source'
     content_type_attribute = 'content-type'
     extension = 'tmp'
 
     is_numbering = True if len(source_tags) > 1 else False
     for i, tag in enumerate(source_tags):
+        raw_sources = []  # All the sources included in the tag
         if tag.has_attr(src_attribute):  # e.g. <img src = "...">
-            attribute = src_attribute
+            raw_sources.append(tag[src_attribute].split('?type')[0])
         elif tag.has_attr(link_attribute):  # e.g. <a href = "...">
-            attribute = link_attribute
-        if attribute:
-            raw_source = tag[attribute].split('?type')[0]
+            raw_sources.append(tag[link_attribute].split('?type')[0])
+        elif tag.select(source_tag):  # e.g. <video ...><source src = "...">...</source></video>
+            for source in tag.select(source_tag):
+                if source.has_attr(src_attribute):
+                    raw_sources.append(source[src_attribute].split('?type')[0])
+
+        # Now process the collected sources.
+        if len(raw_sources) == 0:
+            log('Error: Tag present, but no source found.\n(Tag: %s)\n(%s: Article)' % (tag, from_article_url))
+        for raw_source in raw_sources:
             source_url = 'https:' + raw_source if raw_source.startswith('//') else raw_source
             # Check the ignored file name list
             for ignored_pattern in FILE_NAME_IGNORED_PATTERNS:
@@ -77,8 +85,6 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
                 download(source_url, '%s-%03d.%s' % (file_name, i, extension))
             else:
                 download(source_url, '%s.%s' % (file_name, extension))
-        else:
-            log('Error: Tag present, but no source found.\n(Tag: %s)\n(%s: Article)' % (tag, from_article_url))
 
 
 def download(url: str, local_name: str):

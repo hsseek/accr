@@ -28,69 +28,13 @@ LOG_PATH = common.read_from_file('52_LOG_PATH.pv')
 
 
 def __get_local_name(doc_title, url):
-    doc_id = url.split('/')[-1].split('?')[0]  # The document id(e.g. '373719')
+    doc_id = url.split('srl=')[-1]  # The document id(e.g. '373719')
     try:
         title = doc_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
         return title + '-' + doc_id
     except Exception as filename_exception:
         log('Error: cannot format filename %s. (%s)' % (doc_title, filename_exception))
         return doc_id
-
-
-def iterate_source_tags(source_tags, file_name, from_article_url):
-    attribute = None
-    src_attribute = 'src'
-    link_attribute = 'href'
-    content_type_attribute = 'content-type'
-    extension = 'tmp'
-
-    is_numbering = True if len(source_tags) > 1 else False
-    for i, tag in enumerate(source_tags):
-        if tag.has_attr(src_attribute):  # e.g. <img src = "...">
-            attribute = src_attribute
-        elif tag.has_attr(link_attribute):  # e.g. <a href = "...">
-            attribute = link_attribute
-        if attribute:
-            raw_source = tag[attribute].split('?type')[0]
-            source_url = 'https:' + raw_source if raw_source.startswith('//') else raw_source
-            # Check the ignored file name list
-            for ignored_pattern in FILE_NAME_IGNORED_PATTERNS:
-                if ignored_pattern in source_url:
-                    log('Ignored %s.\n(Article: %s' % (source_url, from_article_url))
-                    continue  # Skip this source tag.
-
-            # Retrieve the extension.
-            header = requests.head(source_url).headers
-            if content_type_attribute in header:
-                category, filetype = header[content_type_attribute].split('/')
-                if filetype == 'quicktime':  # 'video/quicktime' represents a mov file.
-                    filetype = 'mov'
-                # Check the file type.
-                if category == 'text':
-                    log('A text link: %s\n(Article: %s)' % (source_url, from_article_url))
-                    continue  # Skip this source tag.
-
-                if filetype in EXTENSION_CANDIDATES:
-                    extension = filetype
-                else:
-                    log('Error: unexpected %s/%s\n(Article: %s)\n(Source: %s)' %
-                        (category, filetype, from_article_url, source_url))
-                    # Try extract the extension from the url. (e.g. https://www.domain.com/video.mp4)
-                    chunk = source_url.split('.')[-1]
-                    if chunk in EXTENSION_CANDIDATES:
-                        extension = chunk
-
-            if extension == 'tmp':  # After all, the extension has not been updated.
-                log('Error: extension cannot be specified.\n(Article: %s)\n(Source: %s)' %
-                    (from_article_url, source_url))
-            print('%s-*.%s on %s' % (file_name, extension, source_url))
-            # Download the file.
-            if is_numbering:
-                downloader.download(source_url, '%s-%03d.%s' % (file_name, i, extension))
-            else:
-                downloader.download(source_url, '%s.%s' % (file_name, extension))
-        else:
-            log('Error: Tag present, but no source found.\n(Tag: %s)\n(%s: Article)' % (tag, from_article_url))
 
 
 def scan_article(url: str):
@@ -103,14 +47,14 @@ def scan_article(url: str):
     img_source_tags = soup.select(body_css_selector + 'img')
     if img_source_tags:  # Images present
         try:
-            iterate_source_tags(img_source_tags, local_name + DOMAIN_TAG + '-i', url)
+            downloader.iterate_source_tags(img_source_tags, local_name + DOMAIN_TAG + '-i', url)
         except Exception as img_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (img_source_exception, url, traceback.format_exc()))
 
     video_source_tags = soup.select(body_css_selector + 'video')
     if video_source_tags:  # Videos present
         try:
-            iterate_source_tags(video_source_tags, local_name + DOMAIN_TAG + '-v', url)
+            downloader.iterate_source_tags(video_source_tags, local_name + DOMAIN_TAG + '-v', url)
         except Exception as video_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
@@ -127,7 +71,7 @@ def scan_article(url: str):
                     external_link_tags.append(source)
     if external_link_tags:
         try:
-            iterate_source_tags(external_link_tags, local_name + DOMAIN_TAG + '-a', url)
+            downloader.iterate_source_tags(external_link_tags, local_name + DOMAIN_TAG + '-a', url)
         except Exception as video_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
@@ -196,5 +140,6 @@ def process_domain(domains: tuple, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-time.sleep(random.uniform(60, 2100))
-process_domain(ROOT_DOMAIN, starting_page=1)
+# time.sleep(random.uniform(60, 2100))
+# process_domain(ROOT_DOMAIN, starting_page=1)
+scan_article('http://www.red52.kr/index.php?mid=post&page=2&document_srl=29478')
