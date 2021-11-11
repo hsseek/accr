@@ -46,23 +46,29 @@ def get_free_proxies():
     return proxies
 
 
-def get_proxy_session():
+def get_proxy_session(test_url: str, log_path: str):
+    timeout = 3
     session = requests.session()
-    free_proxy_list = get_free_proxies()
-    for i, proxy in enumerate(free_proxy_list):
-        try:
-            session.proxies = {'http': 'http://' + proxy,
-                               'https://': 'https://' + proxy}
-            if session.get('http://httpbin.org/ip').status_code == 200:
-                print('Proxy: %s worked, using %s.(trial %d) ' % (proxy, get_ip(session), i + 1))
-                return session
-        except Exception as e:
-            print('%s failed.(%s)' % (proxy, e))
-    return requests.session()  # Try with a normal session.
+    code = session.get(test_url, timeout=timeout).status_code
+    if code == 200:
+        return session
+    else:
+        log('Error: HTTP response %d.' % code, log_path)
+        free_proxy_list = get_free_proxies()
+        for i, proxy in enumerate(free_proxy_list):
+            try:
+                session.proxies = {'http': 'http://' + proxy,
+                                   'https://': 'https://' + proxy}
+                if session.get(test_url, timeout=timeout).status_code == 200:
+                    print('Proxy: %s worked.(trial %d) ' % (proxy, i + 1))
+                    return session
+            except Exception as e:
+                print('%s failed.(%s)' % (proxy, e))
+    return requests.session()  # Try again with a normal session.
 
 
 def get_ip(session: requests.Session) -> str:
-    return session.get("http://httpbin.org/ip").text.split('"')[-2]
+    return session.get("http://httpbin.org/ip", timeout=1).text.split('"')[-2]
 
 
 def build_tuple(path: str):
