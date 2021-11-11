@@ -40,23 +40,6 @@ def __get_local_name(doc_title, url):
         return doc_id
 
 
-def __get_free_proxies():
-    url = "https://free-proxy-list.net/"
-    # get the HTTP response and construct soup object
-    soup = BeautifulSoup(requests.get(url).content, "html.parser")
-    proxies = []
-    for row in soup.select('div.fpl-list > table.table > tbody > tr'):
-        tds = row.find_all("td")
-        try:
-            ip = tds[0].text.strip()
-            port = tds[1].text.strip()
-            host = f"{ip}:{port}"
-            proxies.append(host)
-        except IndexError:
-            continue
-    return proxies
-
-
 def get_article_soup(url: str) -> BeautifulSoup:
     session = requests.session()
     soup = BeautifulSoup(session.get(url).text, HTML_PARSER)
@@ -65,7 +48,7 @@ def get_article_soup(url: str) -> BeautifulSoup:
         print('Article content accessible. Do not configure proxy.')
         return soup
 
-    free_proxy_list = __get_free_proxies()
+    free_proxy_list = common.get_free_proxies()
     for i, proxy in enumerate(free_proxy_list):
         try:
             session.proxies = {'http': 'http://' + proxy,
@@ -76,10 +59,6 @@ def get_article_soup(url: str) -> BeautifulSoup:
                 return soup
         except Exception as e:
             print('%s failed.(%s)' % (proxy, e))
-
-
-def __get_ip(session: requests.Session) -> str:
-    return session.get("http://httpbin.org/ip").text.split('"')[-2]
 
 
 def scan_article(url: str):
