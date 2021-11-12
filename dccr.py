@@ -246,7 +246,10 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
 
         for i, row in enumerate(rows):  # Inspect the rows
             try:
-                row_type = row.select_one('td.gall_subject').string
+                row_type_tag = row.select_one('td.gall_subject')
+                row_type = row_type_tag.string if row_type_tag else row.select_one('td.gall_num')
+                if not row_type_tag:
+                    row.select_one('td.gall_num')
                 if row_type in ignored_row_types:  # Filter irregular rows.
                     continue
                 likes = int(row.select_one('td.gall_recommend').string)
