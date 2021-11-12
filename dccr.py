@@ -58,51 +58,35 @@ def initiate_browser(download_path: str):
     return driver
 
 
-def get_size(start_path: str):
-    total_size = 0
-    for dir_path, dir_names, filenames in os.walk(start_path):
-        for f in filenames:
-            fp = os.path.join(dir_path, f)
-            # skip if it is symbolic link
-            if not os.path.islink(fp):
-                total_size += os.path.getsize(fp)
-    return total_size
-
-
-def wait_for_downloading(temp_dir_path: str, loading_sec: float, extended: bool = False):
+def wait_for_downloading(temp_dir_path: str, loading_sec: float, trial: int = 0):
     seconds = 0
     check_interval = 1
-    timeout_multiplier = 25 if extended else 3
+    timeout_multiplier = (4 ^ trial + 1)  # (2, 5, 17, 65, ... )
 
-    # The timeout: 15 ~ 600
-    timeout = max(1, int(loading_sec * timeout_multiplier))
+    # The timeout: 10 ~ 600
+    timeout = max(10, int(loading_sec * timeout_multiplier))
     if timeout > 600:
         timeout = 600
 
     last_size = 0
     while seconds <= timeout:
-        while len(os.listdir(temp_dir_path)) == 0 and seconds <= timeout:
-            print('Waiting to start downloading.(%d/%d)' % (seconds, timeout))
-            time.sleep(check_interval)
-            seconds += check_interval
-        current_size = get_size(temp_dir_path)
-        if current_size != last_size:  # File size increasing, i.e. downloading
+        current_size = sum(os.path.getsize(f) for f in glob(temp_dir_path + '*') if os.path.isfile(f))
+        if current_size == last_size and last_size > 0:
+            return True
+        print('Waiting to finish downloading.(%d/%d)' % (seconds, timeout))
+        # Report
+        if current_size != last_size:
             print('%.1f -> %.1f MB' % (last_size / 1000000, current_size / 1000000))
-        if 0 < last_size == current_size:
-            # The file size not increasing, which means download finished.
-            # (Unless downloading speed is slower than 1 byte/sec.)
-            print('Download successful.')
-            return True  # Successful download
-        last_size = current_size  # Update the file size.
+        # Wait
         time.sleep(check_interval)
         seconds += check_interval
-    else:
-        print('Download NOT successful.')
-        return False  # Download not successful
+        last_size = current_size
+    print('Download timeout reached.')
+    return False  # Timeout
 
 
 def scan_article(url: str):
-    log('Processing %s' % url)
+    log('\nProcessing %s' % url)
     article_no = __get_no_from_url(url)
 
     # A temporary folder to store the zip file.
@@ -116,6 +100,7 @@ def scan_article(url: str):
     try:
         start_time = datetime.now()
         downloading_browser.get(url)
+        loading_sec = common.get_elapsed_sec(start_time)
         # Retrieve the title to name the local files.
         try:
             soup = BeautifulSoup(downloading_browser.page_source, HTML_PARSER)
@@ -124,21 +109,19 @@ def scan_article(url: str):
         except:
             local_name = article_no
 
-        download_successful = click_download_button(downloading_browser, temp_download_path, start_time)
-        if not download_successful:
-            log('Error: Download timeout reached, trying again.')
-            start_time = datetime.now()
-            downloading_browser.get(url)  # Access the page again. (Equivalent to Refresh)
-            download_successful = click_download_button(downloading_browser, temp_download_path,
-                                                        start_time=start_time, extended=True)
+        download_successful = click_download_button(downloading_browser, url, temp_download_path, loading_sec)
 
         if not download_successful:  # Timeout reached again. Log and move to the next article.
-            log('Error: Extended download timeout reached.(%s)' % url)
-            os.rmdir(temp_download_path)
+            log('Error: Download failed.')
+            if len(os.listdir(temp_download_path)) == 0:
+                os.rmdir(temp_download_path)
+            else:
+                log('Error: Files left in the directory.(%s)' % temp_download_path)
             return  # Nothing to do.
     finally:
         downloading_browser.quit()
 
+    # Process the downloaded file. (Mostly, a zip file or an image)
     try:
         DOMAIN_TAG = '-dc-'
 
@@ -171,42 +154,56 @@ def scan_article(url: str):
         log('Error: cannot process download.(%s)' % post_download_exception)
 
 
-def click_download_button(temp_browser, temp_download_path: str, start_time, extended: bool = False) -> bool:
+def click_download_button(temp_browser, url: str, temp_download_path: str, loading_sec: float) -> bool:
     # The download buttons
     btn_class_name = 'btn_file_dw'
     single_download_btn_xpath_1 = '//*[@id="container"]/section/article[2]/div[1]/div/div[7]/ul/li/a'
     single_download_btn_xpath_2 = '//*[@id="container"]/section/article[2]/div[1]/div/div[6]/ul/li/a'
-    successful = False
 
-    try:
-        temp_browser.find_element(By.CLASS_NAME, btn_class_name).click()
-        print('"Download all" button located.')
-
-        loading_sec = common.get_elapsed_sec(start_time)
-        successful = wait_for_downloading(temp_download_path, loading_sec, extended=extended)
-    except selenium.common.exceptions.ElementNotInteractableException:
-        loading_sec = common.get_elapsed_sec(start_time)
-        successful = wait_for_downloading(temp_download_path, loading_sec, extended=extended)
-    except Exception as e1:
+    for i in range(3):
         try:
-            if not isinstance(e1, selenium.common.exceptions.NoSuchElementException):
-                print('Download button exception: %s' % e1)
-            temp_browser.find_element(By.XPATH, single_download_btn_xpath_1).click()
-            print('Download button 1 located.')
-
-            # Don't wait as the session has waited long enough.
-            loading_sec = common.get_elapsed_sec(start_time)
-            successful = wait_for_downloading(temp_download_path, loading_sec, extended=extended)
-        except:
+            if i > 0:  # Has failed. Refresh the browser.
+                log('Download failed with trial #%d.' % i)
+                temp_browser.get(url)   # refresh() does not wait the page to be loaded. So, use get(url)  instead.
+            temp_browser.find_element(By.CLASS_NAME, btn_class_name).click()
+            print('"Download all" button located.')
+            successful = wait_for_downloading(temp_download_path, loading_sec, trial=i)
+            if successful:  # Without reaching timeout
+                break
+            # Else, loop again.
+        except selenium.common.exceptions.NoSuchElementException:
             try:
-                temp_browser.find_element(By.XPATH, single_download_btn_xpath_2).click()
-                print('Download button 2 located.')
+                temp_browser.find_element(By.XPATH, single_download_btn_xpath_1).click()
+                print('Download button 1 located.')
 
-                loading_sec = common.get_elapsed_sec(start_time)
-                successful = wait_for_downloading(temp_download_path, loading_sec, extended=extended)
+                # Don't wait as the session has waited long enough.
+                successful = wait_for_downloading(temp_download_path, loading_sec, trial=i)
+                if successful:
+                    break
+            except selenium.common.exceptions.NoSuchElementException:
+                try:
+                    temp_browser.find_element(By.XPATH, single_download_btn_xpath_2).click()
+                    print('Download button 2 located.')
+
+                    successful = wait_for_downloading(temp_download_path, loading_sec, trial=i)
+                    if successful:
+                        break
+                except selenium.common.exceptions.NoSuchElementException:
+                    log('Error: Cannot locate the download button.')
+                    return False  # The button cannot be located.
+                except:
+                    return False  # Something went wrong trying 'Download 2'
             except:
-                log('Error: Cannot locate the download button.')
-    return successful
+                return False  # Something went wrong trying 'Download 1'
+        except Exception as download_btn_exception:
+            log('Download button exception: %s' % download_btn_exception)
+            return False  # Something went wrong trying 'Download all'
+    else:  # The loop terminated without break, which means successful download.
+        return False
+
+    # Did not encounter exceptions. Downloaded the file successfully.
+    log('Download finished successfully.')
+    return True
 
 
 def __get_no_from_url(url: str) -> str:
@@ -299,7 +296,7 @@ def process_domain(domains: tuple, min_likes: int, scanning_span: int, starting_
 
 
 try:
-    # time.sleep(random.uniform(60, 2100))
+    time.sleep(random.uniform(60, 2100))  # Sleep minutes to randomize the starting time.
     process_domain(GALLERY_DOMAINS, min_likes=50, scanning_span=2, starting_page=1)
 except Exception as e:
     log('Error: main loop error.(%s)\n[Traceback]\n%s' % (e, traceback.format_exc()))
