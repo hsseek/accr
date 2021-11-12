@@ -76,7 +76,7 @@ def get_size(start_path: str):
 def wait_for_downloading(temp_dir_path: str, loading_sec: float, extended: bool = False):
     seconds = 0
     check_interval = 1
-    timeout_multiplier = 25 if extended else 5
+    timeout_multiplier = 25 if extended else 3
 
     # The timeout: 15 ~ 600
     timeout = max(1, int(loading_sec * timeout_multiplier))
@@ -111,7 +111,6 @@ def scan_article(url: str, article_no: str):
     temp_download_path = DOWNLOAD_PATH + article_no + '/'
     if not os.path.exists(temp_download_path):
         os.makedirs(temp_download_path)
-        print('Temporary downloading destination created: %s' % temp_download_path)
 
     # Open another browser.
     downloading_browser = initiate_browser(temp_download_path)
@@ -191,7 +190,8 @@ def click_download_button(temp_browser, temp_download_path: str, start_time, ext
         successful = wait_for_downloading(temp_download_path, loading_sec, extended=extended)
     except Exception as e1:
         try:
-            print('Download button exception: %s' % e1)
+            if not isinstance(e1, selenium.common.exceptions.NoSuchElementException):
+                print('Download button exception: %s' % e1)
             temp_browser.find_element(By.XPATH, single_download_btn_xpath_1).click()
             print('Download button 1 located.')
 
@@ -256,7 +256,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                                     log('#%02d (%02d) | (ignored) %s' % (i + 1, likes, title), False)
                                     break
                             else:
-                                article_no = row.select_one('td.gall_tit > a')['href'].split('&page')[0]
+                                article_no = row.select_one('td.gall_tit > a')['href'].split('&no=')[-1].split('&')[0]
                                 to_scan.append(article_no)
                                 log('#%02d (%02d) | %s' % (i + 1, likes, title), False)
                 except Exception as row_exception:
