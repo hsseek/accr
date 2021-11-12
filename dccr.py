@@ -26,14 +26,10 @@ def log(message: str, has_tst: bool = True):
     common.log(message, path, has_tst)
 
 
-ROOT_DOMAIN = common.read_from_file('DC_ROOT_DOMAIN.pv')
-LOGIN_DOMAIN = common.read_from_file('DC_LOGIN_PATH.pv')
 GALLERY_DOMAINS = common.build_tuple('DC_DOMAINS.pv')
 IGNORED_DOMAINS = common.build_tuple('DC_IGNORED_DOMAINS.pv')
 LOG_PATH = common.read_from_file('DC_LOG_PATH.pv')
 DRIVER_PATH = common.read_from_file('DRIVER_PATH.pv')
-ACCOUNT = common.read_from_file('EMAIL.pv')
-PW = common.read_from_file('PW.pv')
 
 DOWNLOAD_PATH = common.read_from_file('DOWNLOAD_PATH.pv')
 
@@ -286,7 +282,7 @@ def process_domain(domains: tuple, min_likes: int, scanning_span: int, starting_
                 print('Pause for %.1f.' % pause)
                 time.sleep(pause)
 
-                article_url = ROOT_DOMAIN + str(article_no)
+                article_url = gall.replace('lists', 'view').replace('%d', str(article_no))
                 scan_start_time = datetime.now()
                 scan_article(article_url, article_no)
                 log('Scanned %d/%d articles(%.1f")' % (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
@@ -297,6 +293,6 @@ def process_domain(domains: tuple, min_likes: int, scanning_span: int, starting_
 
 try:
     time.sleep(random.uniform(60, 2100))
-    process_domain(GALLERY_DOMAINS, min_likes=100, scanning_span=5, starting_page=1)
+    process_domain(GALLERY_DOMAINS, min_likes=10, scanning_span=1, starting_page=1)
 except Exception as e:
     log('Error: main loop error.(%s)\n[Traceback]\n%s' % (e, traceback.format_exc()))
