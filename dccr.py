@@ -2,6 +2,7 @@ import os
 import zipfile
 from glob import glob
 
+import selenium.common.exceptions
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -91,14 +92,15 @@ def wait_for_downloading(temp_dir_path: str, loading_sec: float):
 
     last_size = 0
     while seconds < timeout:
-        while get_size(temp_dir_path) == 0 and seconds < timeout:
+        while len(os.listdir(temp_dir_path)) == 0 and seconds < timeout:
             print('Waiting to start downloading.(%d/%d)' % (seconds, timeout))
             time.sleep(check_interval)
             seconds += check_interval
         current_size = get_size(temp_dir_path)
-        print('%d -> %d bytes' % (last_size, current_size))
+        if current_size != last_size:
+            print('%.1f -> %.1f MB' % (last_size / 1000000, current_size / 1000000))
         if 0 < last_size == current_size:
-            # Download finished, while the file name hasn't been properly changed.
+            # The file size not increasing, which means download finished.
             # (Unless downloading speed is slower than 1 byte/sec.)
             break
         last_size = current_size  # Update the file size.
@@ -110,7 +112,16 @@ def wait_for_downloading(temp_dir_path: str, loading_sec: float):
 
 
 def scan_article(url: str):
-    browser.get(url)
+    title_timeout = 10
+    browser.set_page_load_timeout(title_timeout)
+
+    try:
+        browser.get(url)
+    except selenium.common.exceptions.TimeoutException:
+        print('Timeout reached, but proceed.')
+        pass  # Ignore the timeout. All we need is the title to set up the temporary download path for now.
+
+    # Try locating the download button
     soup = BeautifulSoup(browser.page_source, HTML_PARSER)
     article_title = soup.select_one('h3.title > span.title_subject').string
     try:
@@ -123,38 +134,44 @@ def scan_article(url: str):
 
     # Open another browser.
     downloading_browser = initiate_browser(temp_download_path)
+
+    # The download buttons
     btn_class_name = 'btn_file_dw'
+    single_download_btn_xpath_1 = '//*[@id="container"]/section/article[2]/div[1]/div/div[7]/ul/li/a'
+    single_download_btn_xpath_2 = '//*[@id="container"]/section/article[2]/div[1]/div/div[6]/ul/li/a'
+
+    download_timeout_reached = False
+    start_time = datetime.now()
+    log('Processing %s' % url)
     try:
-        timeout = True
-        start_time = datetime.now()
-        downloading_browser.get(url)
-        log('Processing %s' % url)
+        downloading_browser.get(url)  # Load again.
+        downloading_browser.find_element(By.CLASS_NAME, btn_class_name).click()
+        print('"Download all" button located.')
 
         loading_sec = common.get_elapsed_sec(start_time)
+        download_timeout_reached = wait_for_downloading(temp_download_path, loading_sec)
+    except Exception as e1:
         try:
-            wait = WebDriverWait(browser, 15)
-            wait.until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, btn_class_name)))
-            downloading_browser.find_element(By.CLASS_NAME, btn_class_name).click()
-            print('Download button located.')
-            timeout = wait_for_downloading(temp_download_path, loading_sec)
-        except:
-            try:
-                downloading_browser.find_element(
-                    By.XPATH, '/html/body/div[2]/div[2]/main/section/article[2]/div[1]/div/div[6]/ul/li/a'
-                ).click()
-                timeout = wait_for_downloading(temp_download_path, loading_sec)
-            except:
-                try:
-                    downloading_browser.find_element(
-                        By.XPATH, '//*[@id="container"]/section/article[2]/div[1]/div/div[7]/ul/li/a'
-                    ).click()
-                    timeout = wait_for_downloading(temp_download_path, loading_sec)
-                except:
-                    log('Error: Cannot locate the download button.')
+            downloading_browser.find_element(By.XPATH, single_download_btn_xpath_1).click()
+            print('Download button 1 located.')
 
-        if timeout:
+            # Don't wait as the session has waited long enough.
+            loading_sec = common.get_elapsed_sec(start_time)
+            download_timeout_reached = wait_for_downloading(temp_download_path, loading_sec)
+        except Exception as e2:
+            try:
+                downloading_browser.find_element(By.XPATH, single_download_btn_xpath_2).click()
+                print('Download button 2 located.')
+
+                loading_sec = common.get_elapsed_sec(start_time)
+                download_timeout_reached = wait_for_downloading(temp_download_path, loading_sec)
+            except:
+                log('Error: Cannot locate the download button.')
+
+        if download_timeout_reached:
             log('Error: Download timeout reached.(%s)' % url)
 
+    try:
         local_name = __get_local_name(article_title, url)
         DOMAIN_TAG = '-dc-'
 
@@ -189,7 +206,7 @@ def scan_article(url: str):
         downloading_browser.quit()
 
 
-def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> ():
+def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, page: int = 1) -> ():
     max_page = page + scanning_span - 1  # To prevent infinite looping
     to_scan = []
     ignored_row_types = ('공지', '설문')
@@ -204,8 +221,12 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
         for i, row in enumerate(rows):  # Inspect the rows
             try:
                 row_type = row.select_one('td.gall_subject').string
-                if row_type in ignored_row_types:
+                if row_type in ignored_row_types:  # Filter irregular rows.
                     continue
+                likes = int(row.select_one('td.gall_recommend').string)
+                if likes < min_likes:
+                    continue
+
                 tst_str = row.select_one('td.gall_date')['title'].split(' ')[0]  # 2021-09-19 23:47:42
                 day_diff = __get_date_difference(tst_str)
                 if day_diff:
@@ -224,12 +245,12 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
                                 (i + 1, title_exception, url))
                         for pattern in TITLE_IGNORED_PATTERNS:  # Compare the string pattern: the most expensive
                             if pattern in title:
-                                log('#%02d | (ignored) %s' % (i + 1, title), False)
+                                log('#%02d (%02d) | (ignored) %s' % (i + 1, likes, title), False)
                                 break
                         else:
                             article_url = row.select_one('td.gall_tit > a')['href'].split('&page')[0]
                             to_scan.append(article_url)
-                            log('#%02d | %s' % (i + 1, title), False)
+                            log('#%02d (%02d) | %s' % (i + 1, likes, title), False)
             except Exception as row_exception:
                 log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
                 continue
@@ -239,12 +260,12 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
     return tuple(to_scan)
 
 
-def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
+def process_domain(domains: tuple, min_likes: int, scanning_span: int, starting_page: int = 1):
     try:
         for domain in domains:
             domain_start_time = datetime.now()
             log('Looking up %s.' % domain)
-            scan_list = get_entries_to_scan(domain, scanning_span, starting_page)
+            scan_list = get_entries_to_scan(domain, min_likes, scanning_span, starting_page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
                 pause = random.uniform(2, 4)
                 print('Pause for %.1f.' % pause)
@@ -262,6 +283,8 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
 browser = initiate_browser(DOWNLOAD_PATH)
 try:
     time.sleep(random.uniform(60, 2100))
-    process_domain(GALLERY_DOMAINS, scanning_span=5, starting_page=1)
+    process_domain(GALLERY_DOMAINS, min_likes=100, scanning_span=5, starting_page=1)
+except Exception as e:
+    log('Error: main loop error.(%s)\n[Traceback]\n%s' % (e, traceback.format_exc()))
 finally:
     browser.quit()
