@@ -101,9 +101,12 @@ def wait_for_downloading(temp_dir_path: str, loading_sec: float, extended: bool 
         return False  # Download not successful
 
 
-def scan_article(url: str, article_no: str):
+def scan_article(url: str):
     log('Processing %s' % url)
+    article_no = __get_no_from_url(url)
 
+    # A temporary folder to store the zip file.
+    # The folder name can be anything, but use the article number to prevent duplicate names.
     temp_download_path = DOWNLOAD_PATH + article_no + '/'
     if not os.path.exists(temp_download_path):
         os.makedirs(temp_download_path)
@@ -206,6 +209,10 @@ def click_download_button(temp_browser, temp_download_path: str, start_time, ext
     return successful
 
 
+def __get_no_from_url(url: str) -> str:
+    return url.split('&no=')[-1].split('&')[0]
+
+
 def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, page: int = 1) -> ():
     max_page = page + scanning_span - 1  # To prevent infinite looping
     to_scan = []
@@ -252,7 +259,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                                     log('#%02d (%02d) | (ignored) %s' % (i + 1, likes, title), False)
                                     break
                             else:
-                                article_no = row.select_one('td.gall_tit > a')['href'].split('&no=')[-1].split('&')[0]
+                                article_no = __get_no_from_url(row.select_one('td.gall_tit > a')['href'])
                                 to_scan.append(article_no)
                                 log('#%02d (%02d) | %s' % (i + 1, likes, title), False)
                 except Exception as row_exception:
@@ -284,7 +291,7 @@ def process_domain(domains: tuple, min_likes: int, scanning_span: int, starting_
 
                 article_url = gall.replace('lists', 'view').replace('page', 'no').replace('%d', str(article_no))
                 scan_start_time = datetime.now()
-                scan_article(article_url, article_no)
+                scan_article(article_url)
                 log('Scanned %d/%d articles(%.1f")' % (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
             log('Finished scanning %s in %d min.' % (gall, int(common.get_elapsed_sec(domain_start_time) / 60)))
     except Exception as normal_domain_exception:
@@ -292,7 +299,7 @@ def process_domain(domains: tuple, min_likes: int, scanning_span: int, starting_
 
 
 try:
-    time.sleep(random.uniform(60, 2100))
-    process_domain(GALLERY_DOMAINS, min_likes=10, scanning_span=2, starting_page=1)
+    # time.sleep(random.uniform(60, 2100))
+    process_domain(GALLERY_DOMAINS, min_likes=50, scanning_span=2, starting_page=1)
 except Exception as e:
     log('Error: main loop error.(%s)\n[Traceback]\n%s' % (e, traceback.format_exc()))
