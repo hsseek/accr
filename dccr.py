@@ -52,7 +52,7 @@ def initiate_browser(download_path: str):
         "download.prompt_for_download": False
     })
     options.add_argument('headless')
-    # options.add_argument('disable-gpu')
+    options.add_argument('disable-gpu')
     # options.add_experimental_option("detach", True)
     driver = webdriver.Chrome(service=service, options=options)
     return driver
@@ -282,7 +282,7 @@ def process_domain(domains: tuple, min_likes: int, scanning_span: int, starting_
                 print('Pause for %.1f.' % pause)
                 time.sleep(pause)
 
-                article_url = gall.replace('lists', 'view').replace('%d', str(article_no))
+                article_url = gall.replace('lists', 'view').replace('page', 'no').replace('%d', str(article_no))
                 scan_start_time = datetime.now()
                 scan_article(article_url, article_no)
                 log('Scanned %d/%d articles(%.1f")' % (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
@@ -293,6 +293,6 @@ def process_domain(domains: tuple, min_likes: int, scanning_span: int, starting_
 
 try:
     time.sleep(random.uniform(60, 2100))
-    process_domain(GALLERY_DOMAINS, min_likes=10, scanning_span=1, starting_page=1)
+    process_domain(GALLERY_DOMAINS, min_likes=10, scanning_span=2, starting_page=1)
 except Exception as e:
     log('Error: main loop error.(%s)\n[Traceback]\n%s' % (e, traceback.format_exc()))
