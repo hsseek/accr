@@ -99,7 +99,7 @@ def download(url: str, local_name: str):
                     f.flush()
                     os.fsync(f.fileno())
     else:  # HTTP status code 4XX/5XX
-        log("Error: Download failed.(status code {}\n{})".format(r.status_code, r.text), True)
+        log("Error: Download failed.(%s)" % url, False)
 
     if local_name.endswith('webp'):
         common.convert_webp_to_png(common.DOWNLOAD_PATH, local_name)
