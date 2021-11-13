@@ -35,7 +35,7 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
         for raw_source in raw_sources:
             source_url = 'https:' + raw_source if raw_source.startswith('//') else raw_source
             # Check the ignored file name list
-            for ignored_pattern in common.IGNORED_FILE_NAME_PATTERNS:
+            for ignored_pattern in common.Constants.IGNORED_FILE_NAME_PATTERNS:
                 if ignored_pattern in source_url:
                     log('Ignored %s.\n(Article: %s' % (source_url, from_article_url))
                     continue  # Skip this source tag.
@@ -81,13 +81,13 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
 
 def download(url: str, local_name: str):
     # Set the absolute path to store the downloaded file.
-    if not os.path.exists(common.DOWNLOAD_PATH):
-        os.makedirs(common.DOWNLOAD_PATH)  # create folder if it does not exist
+    if not os.path.exists(common.Constants.DOWNLOAD_PATH):
+        os.makedirs(common.Constants.DOWNLOAD_PATH)  # create folder if it does not exist
 
     # Set the download target.
     r = requests.get(url, stream=True)
 
-    file_path = os.path.join(common.DOWNLOAD_PATH, local_name)
+    file_path = os.path.join(common.Constants.DOWNLOAD_PATH, local_name)
     if r.ok:
         with open(file_path, 'wb') as f:
             for chunk in r.iter_content(chunk_size=1024 * 8):
@@ -99,4 +99,4 @@ def download(url: str, local_name: str):
         log("Error: Download failed.(%s)" % url, False)
 
     if local_name.endswith('webp'):
-        common.convert_webp_to_png(common.DOWNLOAD_PATH, local_name)
+        common.convert_webp_to_png(common.Constants.DOWNLOAD_PATH, local_name)

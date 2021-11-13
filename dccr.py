@@ -128,14 +128,20 @@ def scan_article(url: str):
     # Get the information to format the file name.
     try:
         soup = BeautifulSoup(browser.page_source, Constants.HTML_PARSER)
-        article_title = soup.select_one('h3.title > span.title_subject').string
+        # Get Likes.
         likes = soup.select_one('div.fr > span.gall_reply_num').string.strip().split(' ')[-1]
         formatted_likes = '%03d' % int(likes)
-        formatted_title = formatted_likes + '-' + article_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
+        # Get the title.
+        article_title = soup.select_one('h3.title > span.title_subject').string
+        formatted_title = article_title.strip()
+        for prohibited_char in common.Constants.PROHIBITED_CHARS:
+            formatted_title = formatted_title.replace(prohibited_char, '_')
+        formatted_file_name = formatted_likes + '-' + formatted_title
+
     except Exception as title_exception:
         log('Error: cannot process the article title.(%s)' % title_exception, has_tst=False)
         # Use the article number as the file name.
-        formatted_title = __get_no_from_url(url)
+        formatted_file_name = __get_no_from_url(url)
 
     download_successful = click_download_button(browser, url, Constants.TMP_DOWNLOAD_PATH, loading_sec)
 
@@ -163,7 +169,7 @@ def scan_article(url: str):
                 common.convert_webp_to_png(Constants.TMP_DOWNLOAD_PATH, file_name)
 
         # Rename files with long names.
-        destination_head = Constants.DESTINATION_PATH + formatted_title + domain_tag
+        destination_head = Constants.DESTINATION_PATH + formatted_file_name + domain_tag
         char_limit = 60
         for file_name in os.listdir(Constants.TMP_DOWNLOAD_PATH):
             if len(file_name) > char_limit:
@@ -295,7 +301,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                             title = '%05d' % random.randint(1, 99999)
                             log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
                                 (i + 1, title_exception, url))
-                        for pattern in common.IGNORED_TITLE_PATTERNS:
+                        for pattern in common.Constants.IGNORED_TITLE_PATTERNS:
                             if pattern in title:
                                 log('#%02d (%02d) | (ignored) %s' % (i + 1, likes, title), False)
                                 break

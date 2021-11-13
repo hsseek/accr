@@ -26,12 +26,11 @@ def log(message: str, has_tst: bool = True):
 
 def __get_local_name(doc_title, url):
     doc_id = url.split('/')[-1]  # The document id(e.g. '373719')
-    try:
-        title = doc_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
-        return title + '-' + doc_id
-    except Exception as filename_exception:
-        log('Error: cannot format filename %s. (%s)' % (doc_title, filename_exception))
-        return doc_id
+    print('Doc id : '+ doc_id)
+    formatted_title = doc_title.strip()
+    for prohibited_char in common.Constants.PROHIBITED_CHARS:
+        formatted_title = formatted_title.replace(prohibited_char, '_')
+    return formatted_title + '-' + doc_id
 
 
 def scan_article(url: str):
@@ -101,7 +100,7 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
                             title = '%05d' % random.randint(1, 99999)
                             log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
                                 (i + 1, title_exception, url))
-                        for pattern in common.IGNORED_TITLE_PATTERNS:
+                        for pattern in common.Constants.IGNORED_TITLE_PATTERNS:
                             if pattern in title:
                                 log('#%02d | (ignored) %s' % (i + 1, title), False)
                                 break

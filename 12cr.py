@@ -43,14 +43,12 @@ def __get_date_difference(tst_str: str) -> int:
             print('(%s) The timestamp did not match the format: %s.' % (e, tst_str))
 
 
-def __get_local_name(doc_title, url):
+def __get_local_name(doc_title: str, url: str):
     doc_id = url.split('id=')[-1].split('&')[0]  # The document id(e.g. '373719')
-    try:
-        title = doc_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
-        return title + '-' + doc_id
-    except Exception as filename_exception:
-        log('Error: cannot format filename %s. (%s)' % (doc_title, filename_exception))
-        return doc_id
+    formatted_title = doc_title.strip()
+    for prohibited_char in common.Constants.PROHIBITED_CHARS:
+        formatted_title = formatted_title.replace(prohibited_char, '_')
+    return formatted_title + '-' + doc_id
 
 
 # Peculiar urls present. Do not use downloader.iterate_source_tag
@@ -72,7 +70,7 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
                 if raw_source.startswith('/data') else raw_source
 
             # Check the ignored file name list
-            for ignored_pattern in common.IGNORED_FILE_NAME_PATTERNS:
+            for ignored_pattern in common.Constants.IGNORED_FILE_NAME_PATTERNS:
                 if ignored_pattern in source_url:
                     log('Ignored %s.\n(Article: %s)' % (source_url, from_article_url))
                     continue  # Skip this source tag.
@@ -175,7 +173,7 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
                             title = '%05d' % random.randint(1, 99999)
                             log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
                                 (i + 1, title_exception, url))
-                        for pattern in common.IGNORED_TITLE_PATTERNS:
+                        for pattern in common.Constants.IGNORED_TITLE_PATTERNS:
                             if pattern in title:
                                 log('#%02d | (ignored) %s' % (i + 1, title), False)
                                 break

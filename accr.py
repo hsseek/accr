@@ -34,12 +34,10 @@ def get_tor_session():
 def __get_local_name(doc_title: str, url: str, likes: str):
     doc_id = url.split('/')[-1].split('?')[0]  # The document id(e.g. '373719')
     formatted_likes = '%03d' % int(likes)
-    try:
-        title = doc_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
-        return formatted_likes + '-' + title + '-' + doc_id
-    except Exception as filename_exception:
-        log('Error: cannot format filename %s. (%s)' % (doc_title, filename_exception))
-        return formatted_likes + '-' + doc_id
+    formatted_title = doc_title.strip()
+    for prohibited_char in common.Constants.PROHIBITED_CHARS:
+        formatted_title = formatted_title.replace(prohibited_char, '_')
+    return formatted_likes + '-' + formatted_title + '-' + doc_id
 
 
 def get_article_soup(url: str) -> BeautifulSoup:
@@ -68,7 +66,7 @@ def scan_article(url: str):
     # Extract title and likes.
     article_title_long = soup.select_one('head > title').string
     article_title_short = common.split_on_last_pattern(article_title_long, ' - ')[0].strip()
-    likes = soup.select_one('div.article-head > div.info-row > div.article-info > span').string
+    likes = soup.select_one('div.article-head > div.info-row > div.article-info > span.body').string
 
     local_name = __get_local_name(article_title_short, url, likes)
     domain_tag = '-ac'
@@ -146,7 +144,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                                     title = '%05d' % random.randint(1, 99999)
                                     log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
                                         (i + 1, title_exception, url))
-                                for pattern in common.IGNORED_TITLE_PATTERNS:
+                                for pattern in common.Constants.IGNORED_TITLE_PATTERNS:
                                     if pattern in title:
                                         log('#%02d (%s)\t| (ignored) %s' % (i + 1, likes, title), False)
                                         break
