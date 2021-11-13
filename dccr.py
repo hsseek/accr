@@ -25,7 +25,6 @@ class Constants:
     ACCOUNT, PASSWORD = common.build_tuple('DC_ACCOUNT.pv')
 
     GALLERY_DOMAINS = common.build_tuple_of_tuples('DC_DOMAINS.pv')
-    IGNORED_DOMAINS = common.build_tuple('DC_IGNORED_DOMAINS.pv')
     LOG_PATH = common.read_from_file('DC_LOG_PATH.pv')
     DRIVER_PATH = common.read_from_file('DRIVER_PATH.pv')
 
@@ -136,8 +135,10 @@ def scan_article(url: str):
         formatted_title = article_title.strip()
         for prohibited_char in common.Constants.PROHIBITED_CHARS:
             formatted_title = formatted_title.replace(prohibited_char, '_')
-        formatted_file_name = formatted_likes + '-' + formatted_title
-
+        # Get the channel name
+        channel_name = __get_chan_from_url(url)
+        article_no = __get_no_from_url(url)
+        formatted_file_name = formatted_likes + '-' + formatted_title + '-' + article_no + '-' + channel_name
     except Exception as title_exception:
         log('Error: cannot process the article title.(%s)' % title_exception, has_tst=False)
         # Use the article number as the file name.
@@ -170,7 +171,7 @@ def scan_article(url: str):
 
         # Rename files with long names.
         destination_head = Constants.DESTINATION_PATH + formatted_file_name + domain_tag
-        char_limit = 60
+        char_limit = 40
         for file_name in os.listdir(Constants.TMP_DOWNLOAD_PATH):
             if len(file_name) > char_limit:
                 print('Truncated a long file name: %s' % file_name)
@@ -255,7 +256,11 @@ def click_download_button(temp_browser, url: str, tmp_download_path: str, loadin
 
 
 def __get_no_from_url(url: str) -> str:
-    return url.split('&no=')[-1].split('&')[0]
+    return url.split('no=')[-1].split('&')[0]
+
+
+def __get_chan_from_url(url: str) -> str:
+    return url.split('id=')[-1].split('&')[0]
 
 
 def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, page: int = 1) -> ():
@@ -337,7 +342,7 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
             scan_start_time = datetime.now()
             scan_article(article_url)
             log('Scanned %d/%d articles(%.1f")' % (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
-        log('Finished scanning %s in %d min.' % (gall, int(common.get_elapsed_sec(domain_start_time) / 60)))
+        log('Finished scanning %s in %d min.\n' % (gall, int(common.get_elapsed_sec(domain_start_time) / 60)))
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 

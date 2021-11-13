@@ -15,7 +15,7 @@ class Constants:
     TOO_OLD_DAY = 2
 
     ROOT_DOMAIN = common.build_tuple('12_DOMAINS.pv')
-    IGNORED_DOMAINS = common.build_tuple('12_IGNORED_DOMAINS.pv')
+    IGNORED_URLS = common.build_tuple('12_IGNORED_URLS.pv')
     LOG_PATH = common.read_from_file('12_LOG_PATH.pv')
 
 
@@ -133,7 +133,7 @@ def scan_article(url: str):
     if link_tags:
         for source in link_tags:
             if source.has_attr(link_attr):
-                for ignored_url in Constants.IGNORED_DOMAINS:
+                for ignored_url in Constants.IGNORED_URLS:
                     if ignored_url in source[link_attr]:
                         break
                 else:

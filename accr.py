@@ -15,7 +15,7 @@ class Constants:
 
     NORMAL_DOMAINS = common.build_tuple_of_tuples('AC_NORMAL_DOMAINS.pv')
     PROXY_DOMAINS = common.build_tuple_of_tuples('AC_PROXY_DOMAINS.pv')
-    IGNORED_DOMAINS = common.build_tuple('AC_IGNORED_DOMAINS.pv')
+    IGNORED_URLS = common.build_tuple('AC_IGNORED_URLS.pv')
 
 
 def log(message: str, has_tst: bool = True):
@@ -31,13 +31,15 @@ def get_tor_session():
     return req
 
 
-def __get_local_name(doc_title: str, url: str, likes: str):
-    doc_id = url.split('/')[-1].split('?')[0]  # The document id(e.g. '373719')
+def __get_local_name(article_title: str, url: str, likes: str):
+    url_chunks = url.split('?')[0].split('/')
+    article_id = url_chunks[-1]
+    chan_id = url_chunks[-2]
     formatted_likes = '%03d' % int(likes)
-    formatted_title = doc_title.strip()
+    formatted_title = article_title.strip()
     for prohibited_char in common.Constants.PROHIBITED_CHARS:
         formatted_title = formatted_title.replace(prohibited_char, '_')
-    return formatted_likes + '-' + formatted_title + '-' + doc_id
+    return formatted_likes + '-' + formatted_title + '-' + article_id + '-' + chan_id
 
 
 def get_article_soup(url: str) -> BeautifulSoup:
@@ -92,8 +94,9 @@ def scan_article(url: str):
     if link_tags:
         for source in link_tags:
             if source.has_attr(link_attr):
-                for ignored_url in Constants.IGNORED_DOMAINS:
+                for ignored_url in Constants.IGNORED_URLS:
                     if ignored_url in source[link_attr]:
+                        log('Ignoring based on url: %s\n(Article:%s)' % (source[link_attr], url))
                         break
                 else:
                     external_link_tags.append(source)
@@ -185,7 +188,9 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-time.sleep(random.uniform(60, 3600))
-process_domain(Constants.NORMAL_DOMAINS, scanning_span=10, starting_page=1)
-time.sleep(random.uniform(30, 300))
-process_domain(Constants.PROXY_DOMAINS, scanning_span=10, starting_page=1)
+# time.sleep(random.uniform(60, 3600))
+# process_domain(Constants.NORMAL_DOMAINS, scanning_span=10, starting_page=1)
+# time.sleep(random.uniform(30, 300))
+# process_domain(Constants.PROXY_DOMAINS, scanning_span=10, starting_page=1)
+#test
+scan_article('https://arca.live/b/netotate/38098575')

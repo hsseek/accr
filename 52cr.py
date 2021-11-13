@@ -15,7 +15,7 @@ class Constants:
     TOO_OLD_DAY = 2
 
     ROOT_DOMAIN = common.build_tuple('52_DOMAINS.pv')
-    IGNORED_DOMAINS = common.build_tuple('52_IGNORED_DOMAINS.pv')
+    IGNORED_URLS = common.build_tuple('52_IGNORED_URLS.pv')
     LOG_PATH = common.read_from_file('52_LOG_PATH.pv')
 
 
@@ -26,7 +26,6 @@ def log(message: str, has_tst: bool = True):
 
 def __get_local_name(doc_title, url):
     doc_id = url.split('/')[-1]  # The document id(e.g. '373719')
-    print('Doc id : '+ doc_id)
     formatted_title = doc_title.strip()
     for prohibited_char in common.Constants.PROHIBITED_CHARS:
         formatted_title = formatted_title.replace(prohibited_char, '_')
@@ -60,7 +59,7 @@ def scan_article(url: str):
     if link_tags:
         for source in link_tags:
             if source.has_attr(link_attr):
-                for ignored_url in Constants.IGNORED_DOMAINS:
+                for ignored_url in Constants.IGNORED_URLS:
                     if ignored_url in source[link_attr]:
                         break
                 else:

@@ -37,46 +37,45 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
             # Check the ignored file name list
             for ignored_pattern in common.Constants.IGNORED_FILE_NAME_PATTERNS:
                 if ignored_pattern in source_url:
-                    log('Ignored %s.\n(Article: %s' % (source_url, from_article_url))
-                    continue  # Skip this source tag.
+                    log('Ignoring based on file name pattern: %s.\n(Article: %s' % (source_url, from_article_url))
+                    break  # Skip this source tag.
+            else:  # Retrieve the extension.
+                try:
+                    header = requests.head(source_url).headers
+                    if content_type_attribute in header:
+                        header = header[content_type_attribute]
+                        try:
+                            category, filetype = header.split('/')
+                        except ValueError:
+                            filetype = header
+                            category = None
+                        if filetype == 'quicktime':  # 'video/quicktime' represents a mov file.
+                            filetype = 'mov'
+                        # Check the file type.
+                        if category == 'text':
+                            log('A text link: %s\n(Article: %s)' % (source_url, from_article_url))
+                            continue  # Skip this source tag.
 
-            # Retrieve the extension.
-            try:
-                header = requests.head(source_url).headers
-                if content_type_attribute in header:
-                    header = header[content_type_attribute]
-                    try:
-                        category, filetype = header.split('/')
-                    except ValueError:
-                        filetype = header
-                        category = None
-                    if filetype == 'quicktime':  # 'video/quicktime' represents a mov file.
-                        filetype = 'mov'
-                    # Check the file type.
-                    if category == 'text':
-                        log('A text link: %s\n(Article: %s)' % (source_url, from_article_url))
-                        continue  # Skip this source tag.
+                        if filetype in EXTENSION_CANDIDATES:
+                            extension = filetype
+                        else:
+                            log('Error: unexpected %s/%s\n(Article: %s)\n(Source: %s)' %
+                                (category, filetype, from_article_url, source_url))
+                except Exception as header_exception:
+                    log('Error: cannot process the header.(%s)\n(Tag: %s)\n(%s: Article)' %
+                        (header_exception, tag, from_article_url))
 
-                    if filetype in EXTENSION_CANDIDATES:
-                        extension = filetype
+                if extension == 'tmp':  # After all, the extension has not been updated.
+                    # Try extract the extension from the url. (e.g. https://www.domain.com/video.mp4)
+                    chunk = source_url.split('.')[-1]
+                    if chunk in EXTENSION_CANDIDATES:
+                        extension = chunk
                     else:
-                        log('Error: unexpected %s/%s\n(Article: %s)\n(Source: %s)' %
-                            (category, filetype, from_article_url, source_url))
-            except Exception as header_exception:
-                log('Error: cannot process the header.(%s)\n(Tag: %s)\n(%s: Article)' %
-                    (header_exception, tag, from_article_url))
-
-            if extension == 'tmp':  # After all, the extension has not been updated.
-                # Try extract the extension from the url. (e.g. https://www.domain.com/video.mp4)
-                chunk = source_url.split('.')[-1]
-                if chunk in EXTENSION_CANDIDATES:
-                    extension = chunk
-                else:
-                    log('Error: extension cannot be specified.\n(Article: %s)\n(Source: %s)' %
-                        (from_article_url, source_url))
-            print('%s-*.%s on %s' % (file_name, extension, source_url))
-            # Download the file.
-            download(source_url, '%s-%03d.%s' % (file_name, i, extension))
+                        log('Error: extension cannot be specified.\n(Article: %s)\n(Source: %s)' %
+                            (from_article_url, source_url))
+                print('%s-*.%s on %s' % (file_name, extension, source_url))
+                # Download the file.
+                download(source_url, '%s-%03d.%s' % (file_name, i, extension))
 
 
 def download(url: str, local_name: str):
