@@ -13,8 +13,8 @@ class Constants:
     TOO_YOUNG_DAY = 1
     TOO_OLD_DAY = 3
 
-    NORMAL_DOMAIN_INFOS = common.build_tuple_of_tuples('AC_NORMAL_DOMAINS.pv')
-    PROXY_DOMAIN_INFOS = common.build_tuple_of_tuples('AC_PROXY_DOMAINS.pv')
+    NORMAL_DOMAINS = common.build_tuple_of_tuples('AC_NORMAL_DOMAINS.pv')
+    PROXY_DOMAINS = common.build_tuple_of_tuples('AC_PROXY_DOMAINS.pv')
     IGNORED_DOMAINS = common.build_tuple('AC_IGNORED_DOMAINS.pv')
 
 
@@ -158,9 +158,9 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
     return tuple(to_scan)
 
 
-def process_domain(domain_infos: tuple, scanning_span: int, starting_page: int = 1):
+def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
     try:
-        for domain_info in domain_infos:
+        for domain_info in domains:
             domain_start_time = datetime.now()
             url = domain_info[0]
             min_likes = int(domain_info[1])
@@ -183,7 +183,7 @@ def process_domain(domain_infos: tuple, scanning_span: int, starting_page: int =
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-# time.sleep(random.uniform(60, 2100))  # test
-# process_domain(Constants.NORMAL_DOMAIN_INFOS, scanning_span=10, starting_page=1)
-# time.sleep(random.uniform(30, 180))
-process_domain(Constants.PROXY_DOMAIN_INFOS, scanning_span=10, starting_page=1)
+time.sleep(random.uniform(60, 2100))
+process_domain(Constants.NORMAL_DOMAINS, scanning_span=10, starting_page=1)
+time.sleep(random.uniform(30, 180))
+process_domain(Constants.PROXY_DOMAINS, scanning_span=10, starting_page=1)

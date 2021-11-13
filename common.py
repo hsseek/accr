@@ -48,10 +48,10 @@ def get_free_proxies():
     return proxies
 
 
-def get_proxy_session(test_url: str, log_path: str):
+def get_proxy_session(sampling_url: str, log_path: str):
     timeout = 3
     session = requests.session()
-    code = session.get(test_url, timeout=timeout).status_code
+    code = session.get(sampling_url, timeout=timeout).status_code
     if code == 200:
         return session
     else:
@@ -61,7 +61,7 @@ def get_proxy_session(test_url: str, log_path: str):
             try:
                 session.proxies = {'http': 'http://' + proxy,
                                    'https://': 'https://' + proxy}
-                if session.get(test_url, timeout=timeout).status_code == 200:
+                if session.get(sampling_url, timeout=timeout).status_code == 200:
                     print('Proxy: %s worked.(trial %d) ' % (proxy, i + 1))
                     return session
             except Exception as e:

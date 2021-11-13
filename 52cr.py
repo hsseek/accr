@@ -139,5 +139,5 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-# time.sleep(random.uniform(60, 2100))  test
+time.sleep(random.uniform(60, 2100))
 process_domain(Constants.ROOT_DOMAIN, scanning_span=5, starting_page=1)

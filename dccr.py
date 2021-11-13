@@ -129,7 +129,8 @@ def scan_article(url: str):
         soup = BeautifulSoup(browser.page_source, Constants.HTML_PARSER)
         article_title = soup.select_one('h3.title > span.title_subject').string
         article_id = article_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
-    except:
+    except Exception as title_exception:
+        log('Error: cannot process the article title.(%s)' % title_exception, has_tst=False)
         article_id = article_no
 
     download_successful = click_download_button(browser, url, Constants.TMP_DOWNLOAD_PATH, loading_sec)
@@ -226,9 +227,11 @@ def click_download_button(temp_browser, url: str, tmp_download_path: str, loadin
                 except selenium.common.exceptions.NoSuchElementException:
                     log('Error: Cannot locate the download button.')
                     return False  # The button cannot be located.
-                except:
+                except Exception as download_btn_2_exception:
+                    log('Error: download button 2 raised an exception:(%s)' % download_btn_2_exception, False)
                     return False  # Something went wrong trying 'Download 2'
-            except:
+            except Exception as download_btn_1_exception:
+                log('Error: download button 1 raised an exception:(%s)' % download_btn_1_exception, False)
                 return False  # Something went wrong trying 'Download 1'
         except Exception as download_btn_exception:
             log('Download button exception: %s' % download_btn_exception)
@@ -300,7 +303,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                 log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
                 continue
         if browser.current_url == prev_url:
-            log('Page %d doesn\'t exists. Skip the following pages.' % page)
+            log('Page %d does not exists. Skip the following pages.' % page)
             return tuple(to_scan)
         else:
             prev_url = browser.current_url  # Store the url for the next comparison.
