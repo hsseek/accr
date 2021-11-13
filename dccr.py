@@ -132,7 +132,6 @@ def scan_article(url: str):
         likes = soup.select_one('div.fr > span.gall_reply_num').string.strip().split(' ')[-1]
         formatted_likes = '%03d' % int(likes)
         formatted_title = formatted_likes + '-' + article_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
-        print('Likes: ' + likes)  # test
     except Exception as title_exception:
         log('Error: cannot process the article title.(%s)' % title_exception, has_tst=False)
         # Use the article number as the file name.
@@ -337,14 +336,10 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-# time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time. test
-# for domain, min_likes_str in Constants.GALLERY_DOMAINS:
-#     browser = initiate_browser()
-#     try:
-#         process_domain(domain, min_likes=int(min_likes_str), scanning_span=2, starting_page=1)
-#     finally:
-#         browser.quit()
-browser = initiate_browser()
-scan_article('https://gall.dcinside.com/mgallery/board/view/?id=beautifulbody&no=42882&exception_mode=recommend')
-scan_article('https://gall.dcinside.com/board/view/?id=nude&no=168697&page=1')
-browser.quit()
+time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
+for domain, min_likes_str in Constants.GALLERY_DOMAINS:
+    browser = initiate_browser()
+    try:
+        process_domain(domain, min_likes=int(min_likes_str), scanning_span=2, starting_page=1)
+    finally:
+        browser.quit()
