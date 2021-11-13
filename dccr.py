@@ -14,28 +14,29 @@ import traceback
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-HTML_PARSER = 'html.parser'
-EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
-TITLE_IGNORED_PATTERNS = ('코스프레', '코스어')
-TOO_YOUNG_DAY = 0
-TOO_OLD_DAY = 2
+
+class Constants:
+    HTML_PARSER = 'html.parser'
+    EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
+    TITLE_IGNORED_PATTERNS = ('코스프레', '코스어')
+    TOO_YOUNG_DAY = 0
+    TOO_OLD_DAY = 2
+
+    ROOT_DOMAIN = common.read_from_file('DC_ROOT.pv')
+    ACCOUNT, PASSWORD = common.build_tuple('DC_ACCOUNT.pv')
+
+    GALLERY_DOMAINS = common.build_tuple_of_tuples('DC_DOMAINS.pv')
+    IGNORED_DOMAINS = common.build_tuple('DC_IGNORED_DOMAINS.pv')
+    LOG_PATH = common.read_from_file('DC_LOG_PATH.pv')
+    DRIVER_PATH = common.read_from_file('DRIVER_PATH.pv')
+
+    DESTINATION_PATH = common.read_from_file('DOWNLOAD_PATH.pv')
+    TMP_DOWNLOAD_PATH = common.read_from_file('DC_DOWNLOAD_PATH.pv')
 
 
 def log(message: str, has_tst: bool = True):
     path = common.read_from_file('DC_LOG_PATH.pv')
     common.log(message, path, has_tst)
-
-
-ROOT_DOMAIN = common.read_from_file('DC_ROOT.pv')
-ACCOUNT, PASSWORD = common.build_tuple('DC_ACCOUNT.pv')
-
-GALLERY_DOMAINS = common.build_tuple('DC_DOMAINS.pv')
-IGNORED_DOMAINS = common.build_tuple('DC_IGNORED_DOMAINS.pv')
-LOG_PATH = common.read_from_file('DC_LOG_PATH.pv')
-DRIVER_PATH = common.read_from_file('DRIVER_PATH.pv')
-
-DESTINATION_PATH = common.read_from_file('DOWNLOAD_PATH.pv')
-TMP_DOWNLOAD_PATH = common.read_from_file('DC_DOWNLOAD_PATH.pv')
 
 
 def __get_date_difference(tst_str: str) -> int:
@@ -49,10 +50,10 @@ def __get_date_difference(tst_str: str) -> int:
 
 def initiate_browser():
     # A chrome web driver with headless option
-    service = Service(DRIVER_PATH)
+    service = Service(Constants.DRIVER_PATH)
     options = webdriver.ChromeOptions()
     options.add_experimental_option("prefs", {
-        "download.default_directory": TMP_DOWNLOAD_PATH,
+        "download.default_directory": Constants.TMP_DOWNLOAD_PATH,
         "download.prompt_for_download": False
     })
     options.add_argument('headless')
@@ -63,9 +64,9 @@ def initiate_browser():
 
 
 def login(driver: webdriver.Chrome, current_url: str):
-    driver.get(ROOT_DOMAIN)
-    driver.find_element(By.NAME, 'user_id').send_keys(ACCOUNT)
-    driver.find_element(By.NAME, 'pw').send_keys(PASSWORD)
+    driver.get(Constants.ROOT_DOMAIN)
+    driver.find_element(By.NAME, 'user_id').send_keys(Constants.ACCOUNT)
+    driver.find_element(By.NAME, 'pw').send_keys(Constants.PASSWORD)
     driver.find_element(By.ID, 'login_ok').click()
     driver.get(current_url)
 
@@ -117,29 +118,27 @@ def scan_article(url: str):
 
     # A temporary folder to store the zip file.
     # The folder name can be anything, but use the article number to prevent duplicate names.
-    if not os.path.exists(TMP_DOWNLOAD_PATH):
-        os.makedirs(TMP_DOWNLOAD_PATH)
+    if not os.path.exists(Constants.TMP_DOWNLOAD_PATH):
+        os.makedirs(Constants.TMP_DOWNLOAD_PATH)
 
     start_time = datetime.now()
     browser.get(url)
-    if element_exists_by_class(browser, 'adult_certify'):
-        log('Login required to view the article.')
-        login(browser, url)
+    check_auth(url)
     loading_sec = common.get_elapsed_sec(start_time)
     # Retrieve the title to name the local files.
     try:
-        soup = BeautifulSoup(browser.page_source, HTML_PARSER)
+        soup = BeautifulSoup(browser.page_source, Constants.HTML_PARSER)
         article_title = soup.select_one('h3.title > span.title_subject').string
         article_id = article_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
     except:
         article_id = article_no
 
-    download_successful = click_download_button(browser, url, TMP_DOWNLOAD_PATH, loading_sec)
+    download_successful = click_download_button(browser, url, Constants.TMP_DOWNLOAD_PATH, loading_sec)
 
     if not download_successful:  # Timeout reached again. Log and move to the next article.
         log('Error: Download failed.')
-        if len(os.listdir(TMP_DOWNLOAD_PATH)) > 0:
-            mark_and_move(TMP_DOWNLOAD_PATH, DESTINATION_PATH)
+        if len(os.listdir(Constants.TMP_DOWNLOAD_PATH)) > 0:
+            mark_and_move(Constants.TMP_DOWNLOAD_PATH, Constants.DESTINATION_PATH)
             log('Error: Files left after download failure.')
         return  # Nothing to do.
 
@@ -148,28 +147,47 @@ def scan_article(url: str):
         DOMAIN_TAG = '-dc-'
 
         # Unzip the downloaded file.
-        zip_files = glob(TMP_DOWNLOAD_PATH + '*.zip')
+        zip_files = glob(Constants.TMP_DOWNLOAD_PATH + '*.zip')
         for zip_file_path in zip_files:
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-                zip_ref.extractall(TMP_DOWNLOAD_PATH)
+                zip_ref.extractall(Constants.TMP_DOWNLOAD_PATH)
             os.remove(zip_file_path)
 
         # Convert webp files.
-        for file_name in os.listdir(TMP_DOWNLOAD_PATH):  # The file name might have been changed.
+        for file_name in os.listdir(Constants.TMP_DOWNLOAD_PATH):  # The file name might have been changed.
             if file_name.endswith('.webp'):
-                common.convert_webp_to_png(TMP_DOWNLOAD_PATH, file_name)
+                common.convert_webp_to_png(Constants.TMP_DOWNLOAD_PATH, file_name)
 
         # Rename files with long names.
-        destination_head = DESTINATION_PATH + article_id + DOMAIN_TAG
+        destination_head = Constants.DESTINATION_PATH + article_id + DOMAIN_TAG
         char_limit = 60
-        for file_name in os.listdir(TMP_DOWNLOAD_PATH):
+        for file_name in os.listdir(Constants.TMP_DOWNLOAD_PATH):
             if len(file_name) > char_limit:
                 print('Truncated a long file name: %s' % file_name)
-                os.rename(TMP_DOWNLOAD_PATH + file_name, destination_head + file_name[-char_limit:])
+                os.rename(Constants.TMP_DOWNLOAD_PATH + file_name, destination_head + file_name[-char_limit:])
             else:
-                os.rename(TMP_DOWNLOAD_PATH + file_name, destination_head + file_name)
+                os.rename(Constants.TMP_DOWNLOAD_PATH + file_name, destination_head + file_name)
     except Exception as post_download_exception:
         log('Error: cannot process downloaded files.(%s)' % post_download_exception)
+
+
+def check_auth(url):
+    certify_class_name = 'adult_certify'
+    if not element_exists_by_class(browser, certify_class_name):
+        # Login not required.
+        return True  # Good to go.
+    else:
+        for i in range(2):
+            log('Login required to view the article.')
+            try:
+                login(browser, url)
+                if not element_exists_by_class(browser, certify_class_name):
+                    log('Login successful.')
+                    return True  # Good to go.
+            except Exception as login_exception:
+                log('Login failed.(%s)' % login_exception)
+        else:
+            return False  # Cannot proceed.
 
 
 def click_download_button(temp_browser, url: str, tmp_download_path: str, loading_sec: float) -> bool:
@@ -182,7 +200,7 @@ def click_download_button(temp_browser, url: str, tmp_download_path: str, loadin
         try:
             if i > 0:  # Has failed. Refresh the browser.
                 log('Download failed with trial #%d.' % i)
-                temp_browser.get(url)   # refresh() does not wait the page to be loaded. So, use get(url)  instead.
+                temp_browser.get(url)  # refresh() does not wait the page to be loaded. So, use get(url)  instead.
             temp_browser.find_element(By.CLASS_NAME, btn_class_name).click()
             print('"Download all" button located.')
             successful = wait_for_downloading(tmp_download_path, loading_sec, trial=i)
@@ -238,10 +256,8 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
         start_time = datetime.now()  # A timer for monitoring performance
         url = placeholder.replace('%d', str(page))
         browser.get(url)
-        if element_exists_by_class(browser, 'adult_certify'):
-            log('Login required to view lists.')
-            login(browser, url)
-        soup = BeautifulSoup(browser.page_source, HTML_PARSER)
+        check_auth(url)
+        soup = BeautifulSoup(browser.page_source, Constants.HTML_PARSER)
         rows = soup.select('table.gall_list > tbody > tr.us-post')
 
         for i, row in enumerate(rows):  # Inspect the rows
@@ -251,17 +267,17 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                 if not row_type_tag:
                     row.select_one('td.gall_num')
                 if row_type in ignored_row_types:  # Filter irregular rows.
-                    continue
+                    continue  # Skip the row.
                 likes = int(row.select_one('td.gall_recommend').string)
                 if likes < min_likes:
-                    continue
+                    continue  # Skip the row.
 
                 tst_str = row.select_one('td.gall_date')['title'].split(' ')[0]  # 2021-09-19 23:47:42
                 day_diff = __get_date_difference(tst_str)
                 if day_diff:
-                    if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                    if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                         continue  # Move to the next row
-                    elif day_diff >= TOO_OLD_DAY:  # Too old.
+                    elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
                         # No need to scan older rows.
                         log('Page %d took %.2fs. Stop searching for older articles\n' %
                             (page, common.get_elapsed_sec(start_time)), False)
@@ -273,7 +289,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                             title = '%05d' % random.randint(1, 99999)
                             log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
                                 (i + 1, title_exception, url))
-                        for pattern in TITLE_IGNORED_PATTERNS:  # Compare the string pattern: the most expensive
+                        for pattern in Constants.TITLE_IGNORED_PATTERNS:
                             if pattern in title:
                                 log('#%02d (%02d) | (ignored) %s' % (i + 1, likes, title), False)
                                 break
@@ -285,7 +301,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                 log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
                 continue
         if browser.current_url == prev_url:
-            log('Error: Page %d doesn\'t exists. Skip the following pages.' % page)
+            log('Page %d doesn\'t exists. Skip the following pages.' % page)
             return tuple(to_scan)
         else:
             prev_url = browser.current_url  # Store the url for the next comparison.
@@ -315,9 +331,9 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
 
 
 time.sleep(random.uniform(60, 2100))  # Sleep minutes to randomize the starting time.
-for domain in GALLERY_DOMAINS:
+for domain, min_likes_str in Constants.GALLERY_DOMAINS:
     browser = initiate_browser()
     try:
-        process_domain(domain, min_likes=50, scanning_span=2, starting_page=1)
+        process_domain(domain, min_likes=int(min_likes_str), scanning_span=2, starting_page=1)
     finally:
         browser.quit()
