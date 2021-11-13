@@ -31,14 +31,15 @@ def get_tor_session():
     return req
 
 
-def __get_local_name(doc_title, url):
+def __get_local_name(doc_title: str, url: str, likes: str):
     doc_id = url.split('/')[-1].split('?')[0]  # The document id(e.g. '373719')
+    formatted_likes = '%03d' % int(likes)
     try:
         title = doc_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
-        return title + '-' + doc_id
+        return formatted_likes + '-' + title + '-' + doc_id
     except Exception as filename_exception:
         log('Error: cannot format filename %s. (%s)' % (doc_title, filename_exception))
-        return doc_id
+        return formatted_likes + '-' + doc_id
 
 
 def get_article_soup(url: str) -> BeautifulSoup:
@@ -64,23 +65,26 @@ def get_article_soup(url: str) -> BeautifulSoup:
 
 def scan_article(url: str):
     soup = get_article_soup(url)
+    # Extract title and likes.
     article_title_long = soup.select_one('head > title').string
     article_title_short = common.split_on_last_pattern(article_title_long, ' - ')[0].strip()
-    local_name = __get_local_name(article_title_short, url)
-    DOMAIN_TAG = '-ac'
+    likes = soup.select_one('div.article-head > div.info-row > div.article-info > span').string
+
+    local_name = __get_local_name(article_title_short, url, likes)
+    domain_tag = '-ac'
     body_css_selector = 'div.article-content '
 
     img_source_tags = soup.select(body_css_selector + 'img')
     if img_source_tags:  # Images present
         try:
-            downloader.iterate_source_tags(img_source_tags, local_name + DOMAIN_TAG + '-i', url)
+            downloader.iterate_source_tags(img_source_tags, local_name + domain_tag + '-i', url)
         except Exception as img_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (img_source_exception, url, traceback.format_exc()))
 
     video_source_tags = soup.select(body_css_selector + 'video')
     if video_source_tags:  # Videos present
         try:
-            downloader.iterate_source_tags(video_source_tags, local_name + DOMAIN_TAG + '-v', url)
+            downloader.iterate_source_tags(video_source_tags, local_name + domain_tag + '-v', url)
         except Exception as video_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
@@ -97,7 +101,7 @@ def scan_article(url: str):
                     external_link_tags.append(source)
     if external_link_tags:
         try:
-            downloader.iterate_source_tags(external_link_tags, local_name + DOMAIN_TAG + '-a', url)
+            downloader.iterate_source_tags(external_link_tags, local_name + domain_tag + '-a', url)
         except Exception as video_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
@@ -183,7 +187,7 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-time.sleep(random.uniform(60, 2100))
+time.sleep(random.uniform(60, 3600))
 process_domain(Constants.NORMAL_DOMAINS, scanning_span=10, starting_page=1)
-time.sleep(random.uniform(30, 180))
+time.sleep(random.uniform(30, 300))
 process_domain(Constants.PROXY_DOMAINS, scanning_span=10, starting_page=1)

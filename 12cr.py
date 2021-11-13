@@ -112,20 +112,20 @@ def scan_article(url: str):
     soup = BeautifulSoup(requests.get(url).text, Constants.HTML_PARSER)
     article_title = soup.select_one('div.view-wrap h1')['content']
     local_name = __get_local_name(article_title, url)
-    DOMAIN_TAG = '-12'
+    domain_tag = '-12'
     body_css_selector = 'div.view-content '
 
     img_source_tags = soup.select(body_css_selector + 'img')
     if img_source_tags:  # Images present
         try:
-            iterate_source_tags(img_source_tags, local_name + DOMAIN_TAG + '-i', url)
+            iterate_source_tags(img_source_tags, local_name + domain_tag + '-i', url)
         except Exception as img_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (img_source_exception, url, traceback.format_exc()))
 
     video_source_tags = soup.select(body_css_selector + 'video')
     if video_source_tags:  # Videos present
         try:
-            iterate_source_tags(video_source_tags, local_name + DOMAIN_TAG + '-v', url)
+            iterate_source_tags(video_source_tags, local_name + domain_tag + '-v', url)
         except Exception as video_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
@@ -142,7 +142,7 @@ def scan_article(url: str):
                     external_link_tags.append(source)
     if external_link_tags:
         try:
-            iterate_source_tags(external_link_tags, local_name + DOMAIN_TAG + '-a', url)
+            iterate_source_tags(external_link_tags, local_name + domain_tag + '-a', url)
         except Exception as video_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
@@ -213,5 +213,5 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-time.sleep(random.uniform(60, 2100))
+time.sleep(random.uniform(60, 3600))
 process_domain(Constants.ROOT_DOMAIN, scanning_span=5, starting_page=1)

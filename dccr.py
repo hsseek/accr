@@ -91,8 +91,8 @@ def wait_for_downloading(temp_dir_path: str, loading_sec: float, trial: int = 0)
     # The timeout: 10 ~ 600
     timeout = max(10, int(loading_sec * timeout_multiplier))
     print('Loading: %.1f / Trial: %d / Timeout: %d' % (loading_sec, trial, timeout))
-    if timeout > 600:
-        timeout = 600
+    if timeout > 420:
+        timeout = 420
 
     last_size = 0
     while seconds <= timeout:
@@ -113,25 +113,30 @@ def wait_for_downloading(temp_dir_path: str, loading_sec: float, trial: int = 0)
 
 def scan_article(url: str):
     log('\nProcessing %s' % url)
-    article_no = __get_no_from_url(url)
 
     # A temporary folder to store the zip file.
     # The folder name can be anything, but use the article number to prevent duplicate names.
     if not os.path.exists(Constants.TMP_DOWNLOAD_PATH):
         os.makedirs(Constants.TMP_DOWNLOAD_PATH)
 
+    # Load the article.
     start_time = datetime.now()
     browser.get(url)
     check_auth(url)
     loading_sec = common.get_elapsed_sec(start_time)
-    # Retrieve the title to name the local files.
+
+    # Get the information to format the file name.
     try:
         soup = BeautifulSoup(browser.page_source, Constants.HTML_PARSER)
         article_title = soup.select_one('h3.title > span.title_subject').string
-        article_id = article_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
+        likes = soup.select_one('div.fr > span.gall_reply_num').string.strip().split(' ')[-1]
+        formatted_likes = '%03d' % int(likes)
+        formatted_title = formatted_likes + '-' + article_title.strip().replace(' ', '-').replace('.', '-').replace('/', '-')
+        print('Likes: ' + likes)  # test
     except Exception as title_exception:
         log('Error: cannot process the article title.(%s)' % title_exception, has_tst=False)
-        article_id = article_no
+        # Use the article number as the file name.
+        formatted_title = __get_no_from_url(url)
 
     download_successful = click_download_button(browser, url, Constants.TMP_DOWNLOAD_PATH, loading_sec)
 
@@ -144,7 +149,7 @@ def scan_article(url: str):
 
     # Process the downloaded file. (Mostly, a zip file or an image)
     try:
-        DOMAIN_TAG = '-dc-'
+        domain_tag = '-dc-'  # Note that it includes a tailing '-'.
 
         # Unzip the downloaded file.
         zip_files = glob(Constants.TMP_DOWNLOAD_PATH + '*.zip')
@@ -159,7 +164,7 @@ def scan_article(url: str):
                 common.convert_webp_to_png(Constants.TMP_DOWNLOAD_PATH, file_name)
 
         # Rename files with long names.
-        destination_head = Constants.DESTINATION_PATH + article_id + DOMAIN_TAG
+        destination_head = Constants.DESTINATION_PATH + formatted_title + domain_tag
         char_limit = 60
         for file_name in os.listdir(Constants.TMP_DOWNLOAD_PATH):
             if len(file_name) > char_limit:
@@ -332,10 +337,14 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-time.sleep(random.uniform(60, 2100))  # Sleep minutes to randomize the starting time.
-for domain, min_likes_str in Constants.GALLERY_DOMAINS:
-    browser = initiate_browser()
-    try:
-        process_domain(domain, min_likes=int(min_likes_str), scanning_span=2, starting_page=1)
-    finally:
-        browser.quit()
+# time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time. test
+# for domain, min_likes_str in Constants.GALLERY_DOMAINS:
+#     browser = initiate_browser()
+#     try:
+#         process_domain(domain, min_likes=int(min_likes_str), scanning_span=2, starting_page=1)
+#     finally:
+#         browser.quit()
+browser = initiate_browser()
+scan_article('https://gall.dcinside.com/mgallery/board/view/?id=beautifulbody&no=42882&exception_mode=recommend')
+scan_article('https://gall.dcinside.com/board/view/?id=nude&no=168697&page=1')
+browser.quit()
