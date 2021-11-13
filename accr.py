@@ -7,14 +7,15 @@ from bs4 import BeautifulSoup
 import common
 import downloader
 
-HTML_PARSER = 'html.parser'
-TITLE_IGNORED_PATTERNS = ('코스프레', '코스어')
-TOO_YOUNG_DAY = 1
-TOO_OLD_DAY = 3
 
-NORMAL_DOMAIN_INFOS = common.build_tuple_of_tuples('AC_NORMAL_DOMAINS.pv')
-PROXY_DOMAIN_INFOS = common.build_tuple_of_tuples('AC_PROXY_DOMAINS.pv')
-IGNORED_DOMAINS = common.build_tuple('AC_IGNORED_DOMAINS.pv')
+class Constants:
+    HTML_PARSER = 'html.parser'
+    TOO_YOUNG_DAY = 1
+    TOO_OLD_DAY = 3
+
+    NORMAL_DOMAIN_INFOS = common.build_tuple_of_tuples('AC_NORMAL_DOMAINS.pv')
+    PROXY_DOMAIN_INFOS = common.build_tuple_of_tuples('AC_PROXY_DOMAINS.pv')
+    IGNORED_DOMAINS = common.build_tuple('AC_IGNORED_DOMAINS.pv')
 
 
 def log(message: str, has_tst: bool = True):
@@ -42,7 +43,7 @@ def __get_local_name(doc_title, url):
 
 def get_article_soup(url: str) -> BeautifulSoup:
     session = requests.session()
-    soup = BeautifulSoup(session.get(url).text, HTML_PARSER)
+    soup = BeautifulSoup(session.get(url).text, Constants.HTML_PARSER)
     if not soup.select_one('div.article-body > div.text-muted'):
         # No need to configure proxy.
         print('Article content accessible. Do not configure proxy.')
@@ -53,7 +54,7 @@ def get_article_soup(url: str) -> BeautifulSoup:
         try:
             session.proxies = {'http': 'http://' + proxy,
                                'https://': 'https://' + proxy}
-            soup = BeautifulSoup(session.get(url).text, HTML_PARSER)
+            soup = BeautifulSoup(session.get(url).text, Constants.HTML_PARSER)
             if not soup.select_one('div.article-body > div.text-muted'):
                 print('Proxy: %s worked.(trial %d)' % (proxy, i + 1))
                 return soup
@@ -89,7 +90,7 @@ def scan_article(url: str):
     if link_tags:
         for source in link_tags:
             if source.has_attr(link_attr):
-                for ignored_url in IGNORED_DOMAINS:
+                for ignored_url in Constants.IGNORED_DOMAINS:
                     if ignored_url in source[link_attr]:
                         break
                 else:
@@ -109,7 +110,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
     while page <= max_page and has_regular_row:  # Page-wise
         start_time = datetime.now()  # A timer for monitoring performance
         url = placeholder + str(page)
-        soup = BeautifulSoup(requests.get(url).text, HTML_PARSER)
+        soup = BeautifulSoup(requests.get(url).text, Constants.HTML_PARSER)
         rows = soup.select('div.list-table > a.vrow')
         has_regular_row = False
 
@@ -126,9 +127,9 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                         continue  # Move to the next row
                     else:
                         day_diff = common.get_date_difference(tst_str)
-                        if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                        if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                             continue  # Move to the next row
-                        elif day_diff >= TOO_OLD_DAY:  # Too old.
+                        elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
                             # No need to scan older rows.
                             log('Page %d took %.2fs. Stop searching.\n' %
                                 (page, common.get_elapsed_sec(start_time)), False)
@@ -141,7 +142,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                                     title = '%05d' % random.randint(1, 99999)
                                     log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
                                         (i + 1, title_exception, url))
-                                for pattern in TITLE_IGNORED_PATTERNS:  # Compare the string pattern: the most expensive
+                                for pattern in common.IGNORED_TITLE_PATTERNS:
                                     if pattern in title:
                                         log('#%02d (%s)\t| (ignored) %s' % (i + 1, likes, title), False)
                                         break
@@ -182,7 +183,7 @@ def process_domain(domain_infos: tuple, scanning_span: int, starting_page: int =
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-time.sleep(random.uniform(60, 2100))
-process_domain(NORMAL_DOMAIN_INFOS, scanning_span=10, starting_page=1)
-time.sleep(random.uniform(30, 180))
-process_domain(PROXY_DOMAIN_INFOS, scanning_span=10, starting_page=1)
+# time.sleep(random.uniform(60, 2100))  # test
+# process_domain(Constants.NORMAL_DOMAIN_INFOS, scanning_span=10, starting_page=1)
+# time.sleep(random.uniform(30, 180))
+process_domain(Constants.PROXY_DOMAIN_INFOS, scanning_span=10, starting_page=1)

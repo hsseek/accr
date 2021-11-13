@@ -4,9 +4,6 @@ import requests
 
 
 EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
-FILE_NAME_IGNORED_PATTERNS = ('028c715135212dd447915ed16949f7532588d3d95d113cada85703d1ef26',
-                              'fc13c25d018ccbde127b02044b6e4de17f28725faf1b891422ba6878e9f',
-                              'blocked.png')
 
 
 def log(message: str, has_tst: bool = True):
@@ -38,7 +35,7 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
         for raw_source in raw_sources:
             source_url = 'https:' + raw_source if raw_source.startswith('//') else raw_source
             # Check the ignored file name list
-            for ignored_pattern in FILE_NAME_IGNORED_PATTERNS:
+            for ignored_pattern in common.IGNORED_FILE_NAME_PATTERNS:
                 if ignored_pattern in source_url:
                     log('Ignored %s.\n(Article: %s' % (source_url, from_article_url))
                     continue  # Skip this source tag.

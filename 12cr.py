@@ -7,24 +7,21 @@ from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 
-HTML_PARSER = 'html.parser'
-EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
-FILE_NAME_IGNORED_PATTERNS = ('028c715135212dd447915ed16949f7532588d3d95d113cada85703d1ef26',
-                              'fc13c25d018ccbde127b02044b6e4de17f28725faf1b891422ba6878e9f',
-                              'blocked.png')
-TITLE_IGNORED_PATTERNS = ('코스프레', '코스어')
-TOO_YOUNG_DAY = 0
-TOO_OLD_DAY = 2
+
+class Constants:
+    HTML_PARSER = 'html.parser'
+    EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
+    TOO_YOUNG_DAY = 0
+    TOO_OLD_DAY = 2
+
+    ROOT_DOMAIN = common.build_tuple('12_DOMAINS.pv')
+    IGNORED_DOMAINS = common.build_tuple('12_IGNORED_DOMAINS.pv')
+    LOG_PATH = common.read_from_file('12_LOG_PATH.pv')
 
 
 def log(message: str, has_tst: bool = True):
     path = common.read_from_file('12_LOG_PATH.pv')
     common.log(message, path, has_tst)
-
-
-ROOT_DOMAIN = common.build_tuple('12_DOMAINS.pv')
-IGNORED_DOMAINS = common.build_tuple('12_IGNORED_DOMAINS.pv')
-LOG_PATH = common.read_from_file('12_LOG_PATH.pv')
 
 
 def __get_date_difference(tst_str: str) -> int:
@@ -71,13 +68,13 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
             attribute = link_attribute
         if attribute:
             raw_source = tag[attribute].split('?type')[0]
-            source_url = ROOT_DOMAIN[0] + raw_source\
+            source_url = Constants.ROOT_DOMAIN[0] + raw_source\
                 if raw_source.startswith('/data') else raw_source
 
             # Check the ignored file name list
-            for ignored_pattern in FILE_NAME_IGNORED_PATTERNS:
+            for ignored_pattern in common.IGNORED_FILE_NAME_PATTERNS:
                 if ignored_pattern in source_url:
-                    log('Ignored %s.\n(Article: %s' % (source_url, from_article_url))
+                    log('Ignored %s.\n(Article: %s)' % (source_url, from_article_url))
                     continue  # Skip this source tag.
 
             # Retrieve the extension.
@@ -91,14 +88,14 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
                     log('A text link: %s\n(Article: %s)' % (source_url, from_article_url))
                     continue  # Skip this source tag.
 
-                if filetype in EXTENSION_CANDIDATES:
+                if filetype in Constants.EXTENSION_CANDIDATES:
                     extension = filetype
                 else:
                     log('Error: unexpected %s/%s\n(Article: %s)\n(Source: %s)' %
                         (category, filetype, from_article_url, source_url))
                     # Try extract the extension from the url. (e.g. https://www.domain.com/video.mp4)
                     chunk = source_url.split('.')[-1]
-                    if chunk in EXTENSION_CANDIDATES:
+                    if chunk in Constants.EXTENSION_CANDIDATES:
                         extension = chunk
 
             if extension == 'tmp':  # After all, the extension has not been updated.
@@ -112,7 +109,7 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
 
 
 def scan_article(url: str):
-    soup = BeautifulSoup(requests.get(url).text, HTML_PARSER)
+    soup = BeautifulSoup(requests.get(url).text, Constants.HTML_PARSER)
     article_title = soup.select_one('div.view-wrap h1')['content']
     local_name = __get_local_name(article_title, url)
     DOMAIN_TAG = '-12'
@@ -138,7 +135,7 @@ def scan_article(url: str):
     if link_tags:
         for source in link_tags:
             if source.has_attr(link_attr):
-                for ignored_url in IGNORED_DOMAINS:
+                for ignored_url in Constants.IGNORED_DOMAINS:
                     if ignored_url in source[link_attr]:
                         break
                 else:
@@ -157,7 +154,7 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
     while page <= max_page:  # Page-wise
         start_time = datetime.now()  # A timer for monitoring performance
         url = placeholder + str(page)
-        soup = BeautifulSoup(requests.get(url).text, HTML_PARSER)
+        soup = BeautifulSoup(requests.get(url).text, Constants.HTML_PARSER)
         rows = soup.select('div.list-board > ul.list-body > li.list-item')
 
         for i, row in enumerate(rows):  # Inspect the rows
@@ -165,9 +162,9 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
                 tst_str = row.select_one('div.wr-date').string
                 day_diff = __get_date_difference(tst_str)
                 if day_diff:
-                    if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                    if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                         continue  # Move to the next row
-                    elif day_diff >= TOO_OLD_DAY:  # Too old.
+                    elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
                         # No need to scan older rows.
                         log('Page %d took %.2fs. Stop searching.\n' % (page, common.get_elapsed_sec(start_time)), False)
                         return tuple(to_scan)
@@ -178,7 +175,7 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
                             title = '%05d' % random.randint(1, 99999)
                             log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
                                 (i + 1, title_exception, url))
-                        for pattern in TITLE_IGNORED_PATTERNS:  # Compare the string pattern: the most expensive
+                        for pattern in common.IGNORED_TITLE_PATTERNS:
                             if pattern in title:
                                 log('#%02d | (ignored) %s' % (i + 1, title), False)
                                 break
@@ -217,4 +214,4 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
 
 
 time.sleep(random.uniform(60, 2100))
-process_domain(ROOT_DOMAIN, scanning_span=5, starting_page=1)
+process_domain(Constants.ROOT_DOMAIN, scanning_span=5, starting_page=1)

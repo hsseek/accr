@@ -111,3 +111,6 @@ def split_on_last_pattern(string: str, pattern: str) -> ():
 
 DOWNLOAD_PATH = read_from_file('DOWNLOAD_PATH.pv')
 DUMP_PATH = read_from_file('DUMP_PATH.pv')
+IGNORED_TITLE_PATTERNS = build_tuple('IGNORED_TITLE_PATTERNS.pv')
+IGNORED_FILE_NAME_PATTERNS = build_tuple('IGNORED_FILENAMES.pv')
+

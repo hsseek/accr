@@ -18,7 +18,6 @@ from bs4 import BeautifulSoup
 class Constants:
     HTML_PARSER = 'html.parser'
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
-    TITLE_IGNORED_PATTERNS = ('코스프레', '코스어')
     TOO_YOUNG_DAY = 0
     TOO_OLD_DAY = 2
 
@@ -289,7 +288,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                             title = '%05d' % random.randint(1, 99999)
                             log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
                                 (i + 1, title_exception, url))
-                        for pattern in Constants.TITLE_IGNORED_PATTERNS:
+                        for pattern in common.IGNORED_TITLE_PATTERNS:
                             if pattern in title:
                                 log('#%02d (%02d) | (ignored) %s' % (i + 1, likes, title), False)
                                 break
