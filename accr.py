@@ -188,9 +188,7 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-# time.sleep(random.uniform(60, 3600))
-# process_domain(Constants.NORMAL_DOMAINS, scanning_span=10, starting_page=1)
-# time.sleep(random.uniform(30, 300))
-# process_domain(Constants.PROXY_DOMAINS, scanning_span=10, starting_page=1)
-#test
-scan_article('https://arca.live/b/netotate/38098575')
+time.sleep(random.uniform(60, 3600))
+process_domain(Constants.NORMAL_DOMAINS, scanning_span=10, starting_page=1)
+time.sleep(random.uniform(30, 300))
+process_domain(Constants.PROXY_DOMAINS, scanning_span=10, starting_page=1)
