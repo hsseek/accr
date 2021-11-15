@@ -18,8 +18,8 @@ from bs4 import BeautifulSoup
 class Constants:
     HTML_PARSER = 'html.parser'
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
-    TOO_YOUNG_DAY = 0
-    TOO_OLD_DAY = 2
+    TOO_YOUNG_DAY = 1
+    TOO_OLD_DAY = 3
 
     ROOT_DOMAIN = common.read_from_file('DC_ROOT.pv')
     ACCOUNT, PASSWORD = common.build_tuple('DC_ACCOUNT.pv')
@@ -89,7 +89,7 @@ def wait_for_downloading(temp_dir_path: str, loading_sec: float, trial: int = 0)
 
     # The timeout: 10 ~ 600
     timeout = max(10 * (trial + 1), int(loading_sec * timeout_multiplier))
-    log('Loading: %.1f / Trial: %d / Timeout: %d' % (loading_sec, trial, timeout))
+    log('Trial: %d / Timeout: %d(<-%.1f)' % (trial, timeout, loading_sec))
     if timeout > 420:
         timeout = 420
 
