@@ -85,11 +85,11 @@ def mark_and_move(current_path: str, destination_path: str):
 def wait_for_downloading(temp_dir_path: str, loading_sec: float, trial: int = 0):
     seconds = 0
     check_interval = 1
-    timeout_multiplier = (4 ^ trial + 1)  # (2, 5, 17, 65, ... )
+    timeout_multiplier = (trial + 1) ** 4 + 1  # (2, 5, 17, 65, ... ) 1, 16, 81
 
     # The timeout: 10 ~ 600
-    timeout = max(10, int(loading_sec * timeout_multiplier))
-    print('Loading: %.1f / Trial: %d / Timeout: %d' % (loading_sec, trial, timeout))
+    timeout = max(10 * (trial + 1), int(loading_sec * timeout_multiplier))
+    log('Loading: %.1f / Trial: %d / Timeout: %d' % (loading_sec, trial, timeout))
     if timeout > 420:
         timeout = 420
 
@@ -133,6 +133,7 @@ def scan_article(url: str):
         # Get the title.
         article_title = soup.select_one('h3.title > span.title_subject').string
         formatted_title = article_title.strip()
+        log('<%s>' % formatted_title)
         for prohibited_char in common.Constants.PROHIBITED_CHARS:
             formatted_title = formatted_title.replace(prohibited_char, '_')
         # Get the channel name
@@ -153,6 +154,10 @@ def scan_article(url: str):
             log('Error: Files left after download failure.')
         return  # Nothing to do.
 
+    format_downloaded_file(formatted_file_name)
+
+
+def format_downloaded_file(formatted_file_name):
     # Process the downloaded file. (Mostly, a zip file or an image)
     try:
         domain_tag = '-dc-'  # Note that it includes a tailing '-'.
@@ -342,7 +347,7 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
             scan_start_time = datetime.now()
             scan_article(article_url)
             log('Scanned %d/%d articles(%.1f")' % (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
-        log('Finished scanning %s in %d min.\n' % (gall, int(common.get_elapsed_sec(domain_start_time) / 60)))
+        log('Finished scanning %s in %d min.\n' % (gall, int(common.get_elapsed_sec(domain_start_time) / 60)), False)
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
