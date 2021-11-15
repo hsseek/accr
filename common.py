@@ -6,6 +6,10 @@ import requests
 
 
 def log(message: str, path: str, has_tst: bool = True):
+    dir_path = split_on_last_pattern(path, '/')[0]
+    if not os.path.exists(dir_path):
+        os.mkdir(dir_path)
+
     with open(path, 'a') as f:
         if has_tst:
             message += '\t(%s)' % get_str_time()
