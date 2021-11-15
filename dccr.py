@@ -89,7 +89,7 @@ def wait_for_downloading(temp_dir_path: str, loading_sec: float, trial: int = 0)
 
     # The timeout: 10 ~ 600
     timeout = max(10 * (trial + 1), int(loading_sec * timeout_multiplier))
-    log('Trial: %d / Timeout: %d(<-%.1f)' % (trial, timeout, loading_sec))
+    log('Trial: %d / Timeout: %d(<-%.1f)' % (trial, timeout, loading_sec), False)
     if timeout > 420:
         timeout = 420
 
@@ -133,7 +133,7 @@ def scan_article(url: str):
         # Get the title.
         article_title = soup.select_one('h3.title > span.title_subject').string
         formatted_title = article_title.strip()
-        log('<%s>' % formatted_title)
+        log('<%s> Loaded.' % formatted_title)
         for prohibited_char in common.Constants.PROHIBITED_CHARS:
             formatted_title = formatted_title.replace(prohibited_char, '_')
         # Get the channel name
@@ -346,7 +346,8 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
             article_url = gall.replace('lists', 'view').replace('page', 'no').replace('%d', str(article_no))
             scan_start_time = datetime.now()
             scan_article(article_url)
-            log('Scanned %d/%d articles(%.1f")' % (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
+            log('Scanned %d/%d articles(%.1f")' %
+                (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)), False)
         log('Finished scanning %s in %d min.\n' % (gall, int(common.get_elapsed_sec(domain_start_time) / 60)), False)
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
@@ -356,6 +357,6 @@ time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting 
 for domain, min_likes_str in Constants.GALLERY_DOMAINS:
     browser = initiate_browser()
     try:
-        process_domain(domain, min_likes=int(min_likes_str), scanning_span=2, starting_page=1)
+        process_domain(domain, min_likes=int(min_likes_str), scanning_span=15, starting_page=1)
     finally:
         browser.quit()

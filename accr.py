@@ -68,6 +68,7 @@ def scan_article(url: str):
     # Extract title and likes.
     article_title_long = soup.select_one('head > title').string
     article_title_short = common.split_on_last_pattern(article_title_long, ' - ')[0].strip()
+    log('\nProcessing <%s> (%s)' % (article_title_short, url))
     likes = soup.select_one('div.article-head > div.info-row > div.article-info > span.body').string
 
     local_name = __get_local_name(article_title_short, url, likes)
@@ -181,9 +182,9 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
                 scan_start_time = datetime.now()
                 scan_article(article_url)
                 log('Scanned %d/%d articles(%.1f")' %
-                    (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
-            log('Finished scanning %s in %d min.' %
-                (url, int(common.get_elapsed_sec(domain_start_time) / 60)))
+                    (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)), False)
+            log('Finished scanning %s in %d min.\n' %
+                (url, int(common.get_elapsed_sec(domain_start_time) / 60)), False)
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 

@@ -205,7 +205,8 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
                 article_url = domain + '/bbs/board.php?bo_table=gal01&wr_id=' + str(article_no)
                 scan_start_time = datetime.now()
                 scan_article(article_url)
-                log('Scanned %d/%d articles(%.1f")' % (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)))
+                log('Scanned %d/%d articles(%.1f")' %
+                    (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)), False)
             log('Finished scanning %s in %d min.' % (domain, int(common.get_elapsed_sec(domain_start_time) / 60)))
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
