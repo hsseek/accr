@@ -298,8 +298,10 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                 day_diff = __get_date_difference(tst_str)
                 if day_diff:
                     if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                        print('#%02d (%s) \t| Skipping the too young.' % (i + 1, likes))
                         continue  # Move to the next row
                     elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
+                        print('#%02d (%s) \t| Skipping the too old.' % (i + 1, likes))
                         # No need to scan older rows.
                         log('Page %d took %.2fs. Stop searching for older articles\n' %
                             (page, common.get_elapsed_sec(start_time)), False)
@@ -318,7 +320,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                         else:
                             article_no = __get_no_from_url(row.select_one('td.gall_tit > a')['href'])
                             to_scan.append(article_no)
-                            log('#%02d (%02d) | %s' % (i + 1, likes, title), False)
+                            log('#%02d (%02d) \t| %s' % (i + 1, likes, title), False)
             except Exception as row_exception:
                 log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
                 continue
@@ -336,7 +338,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
 def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page: int = 1):
     try:
         domain_start_time = datetime.now()
-        log('Looking up %s.' % gall)
+        log('Looking up %s' % gall)
         scan_list = get_entries_to_scan(gall, min_likes, scanning_span, starting_page)
         for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
             pause = random.uniform(2, 4)

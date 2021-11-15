@@ -68,7 +68,7 @@ def scan_article(url: str):
     # Extract title and likes.
     article_title_long = soup.select_one('head > title').string
     article_title_short = common.split_on_last_pattern(article_title_long, ' - ')[0].strip()
-    log('\nProcessing <%s> (%s)' % (article_title_short, url))
+    log('Processing <%s> (%s)' % (article_title_short, url))
     likes = soup.select_one('div.article-head > div.info-row > div.article-info > span.body').string
 
     local_name = __get_local_name(article_title_short, url, likes)
@@ -134,8 +134,10 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                     else:
                         day_diff = common.get_date_difference(tst_str)
                         if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                            print('#%02d (%s) \t| Skipping the too young.' % (i + 1, likes))
                             continue  # Move to the next row
                         elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
+                            print('#%02d (%s) \t| Skipping the too old.' % (i + 1, likes))
                             # No need to scan older rows.
                             log('Page %d took %.2fs. Stop searching.\n' %
                                 (page, common.get_elapsed_sec(start_time)), False)
@@ -150,11 +152,11 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                                         (i + 1, title_exception, url))
                                 for pattern in common.Constants.IGNORED_TITLE_PATTERNS:
                                     if pattern in title:
-                                        log('#%02d (%s)\t| (ignored) %s' % (i + 1, likes, title), False)
+                                        log('#%02d (%s) \t| (ignored) %s' % (i + 1, likes, title), False)
                                         break
                                 else:
                                     to_scan.append(row['href'].split('?')[0].split('/')[-1])
-                                    log('#%02d (%s)\t| %s' % (i + 1, likes, title))
+                                    log('#%02d (%s) \t| %s' % (i + 1, likes, title))
             except Exception as row_exception:
                 log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
                 continue
@@ -170,7 +172,7 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
             domain_start_time = datetime.now()
             url = domain_info[0]
             min_likes = int(domain_info[1])
-            log('Looking up %s.' % url)
+            log('Looking up %s' % url)
             page_index = '?cut=%d&p=' % min_likes
             scan_list = get_entries_to_scan(url + page_index, min_likes, scanning_span, starting_page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]

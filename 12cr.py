@@ -161,10 +161,13 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
                 day_diff = __get_date_difference(tst_str)
                 if day_diff:
                     if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                        log('#%02d | Skipping the too young.', False)
                         continue  # Move to the next row
                     elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
                         # No need to scan older rows.
-                        log('Page %d took %.2fs. Stop searching.\n' % (page, common.get_elapsed_sec(start_time)), False)
+                        log('#%02d | Skipping the too old.' % (i + 1), False)
+                        log('Page %d took %.2fs. Stop searching for older rows.\n'
+                            % (page, common.get_elapsed_sec(start_time)), False)
                         return tuple(to_scan)
                     else:  # Mature
                         try:
@@ -194,7 +197,7 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
     try:
         for domain in domains:
             domain_start_time = datetime.now()
-            log('Looking up %s.' % domain)
+            log('Looking up %s' % domain)
             page_index = '/bbs/board.php?bo_table=gal01&page='
             scan_list = get_entries_to_scan(domain + page_index, scanning_span, starting_page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
