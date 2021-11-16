@@ -9,8 +9,6 @@ import downloader
 
 
 class Constants:
-    HTML_PARSER = 'html.parser'
-
     NORMAL_DOMAINS = common.build_tuple_of_tuples('AC_NORMAL_DOMAINS.pv')
     PROXY_DOMAINS = common.build_tuple_of_tuples('AC_PROXY_DOMAINS.pv')
     IGNORED_URLS = common.build_tuple('AC_IGNORED_URLS.pv')
@@ -42,7 +40,7 @@ def __get_local_name(article_title: str, url: str, likes: str):
 
 def get_article_soup(url: str) -> BeautifulSoup:
     session = requests.session()
-    soup = BeautifulSoup(session.get(url).text, Constants.HTML_PARSER)
+    soup = BeautifulSoup(session.get(url).text, common.Constants.HTML_PARSER)
     if not soup.select_one('div.article-body > div.text-muted'):
         # No need to configure proxy.
         print('Article content accessible. Do not configure proxy.')
@@ -53,7 +51,7 @@ def get_article_soup(url: str) -> BeautifulSoup:
         try:
             session.proxies = {'http': 'http://' + proxy,
                                'https://': 'https://' + proxy}
-            soup = BeautifulSoup(session.get(url).text, Constants.HTML_PARSER)
+            soup = BeautifulSoup(session.get(url).text, common.Constants.HTML_PARSER)
             if not soup.select_one('div.article-body > div.text-muted'):
                 print('Proxy: %s worked.(trial %d)' % (proxy, i + 1))
                 return soup
@@ -114,7 +112,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
     while page <= max_page and has_regular_row:  # Page-wise
         start_time = datetime.now()  # A timer for monitoring performance
         url = placeholder + str(page)
-        soup = BeautifulSoup(requests.get(url).text, Constants.HTML_PARSER)
+        soup = BeautifulSoup(requests.get(url).text, common.Constants.HTML_PARSER)
         rows = soup.select('div.list-table > a.vrow')
         has_regular_row = False
 

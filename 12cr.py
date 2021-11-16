@@ -9,12 +9,9 @@ from bs4 import BeautifulSoup
 
 
 class Constants:
-    HTML_PARSER = 'html.parser'
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
-
     ROOT_DOMAIN = common.build_tuple('12_DOMAINS.pv')
     IGNORED_URLS = common.build_tuple('12_IGNORED_URLS.pv')
-    LOG_PATH = common.read_from_file('12_LOG_PATH.pv')
 
 
 def log(message: str, has_tst: bool = True):
@@ -105,7 +102,7 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
 
 
 def scan_article(url: str):
-    soup = BeautifulSoup(requests.get(url).text, Constants.HTML_PARSER)
+    soup = BeautifulSoup(requests.get(url).text, common.Constants.HTML_PARSER)
     article_title = soup.select_one('div.view-wrap h1')['content']
     local_name = __get_local_name(article_title, url)
     domain_tag = '-12'
@@ -150,7 +147,7 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
     while page <= max_page:  # Page-wise
         start_time = datetime.now()  # A timer for monitoring performance
         url = placeholder + str(page)
-        soup = BeautifulSoup(requests.get(url).text, Constants.HTML_PARSER)
+        soup = BeautifulSoup(requests.get(url).text, common.Constants.HTML_PARSER)
         rows = soup.select('div.list-board > ul.list-body > li.list-item')
 
         for i, row in enumerate(rows):  # Inspect the rows
@@ -158,10 +155,10 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
                 tst_str = row.select_one('div.wr-date').string
                 day_diff = __get_date_difference(tst_str)
                 if day_diff:
-                    if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                    if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                         log('#%02d | Skipping the too young.', False)
                         continue  # Move to the next row
-                    elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
+                    elif day_diff >= TOO_OLD_DAY:  # Too old.
                         # No need to scan older rows.
                         log('#%02d | Skipping the too old.' % (i + 1), False)
                         log('Page %d took %.2fs. Stop searching for older rows.\n'

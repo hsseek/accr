@@ -16,7 +16,6 @@ from bs4 import BeautifulSoup
 
 
 class Constants:
-    HTML_PARSER = 'html.parser'
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
 
     ROOT_DOMAIN = common.read_from_file('DC_ROOT.pv')
@@ -124,7 +123,7 @@ def scan_article(url: str):
 
     # Get the information to format the file name.
     try:
-        soup = BeautifulSoup(browser.page_source, Constants.HTML_PARSER)
+        soup = BeautifulSoup(browser.page_source, common.Constants.HTML_PARSER)
         # Get Likes.
         likes = soup.select_one('div.fr > span.gall_reply_num').string.strip().split(' ')[-1]
         formatted_likes = '%03d' % int(likes)
@@ -277,7 +276,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
         url = placeholder.replace('%d', str(page))
         browser.get(url)
         check_auth(url)
-        soup = BeautifulSoup(browser.page_source, Constants.HTML_PARSER)
+        soup = BeautifulSoup(browser.page_source, common.Constants.HTML_PARSER)
         rows = soup.select('table.gall_list > tbody > tr.us-post')
 
         for i, row in enumerate(rows):  # Inspect the rows

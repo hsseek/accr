@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup
 
 
 class Constants:
-    HTML_PARSER = 'html.parser'
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
 
     ROOT_DOMAIN = common.build_tuple('52_DOMAINS.pv')
@@ -31,7 +30,7 @@ def __get_local_name(doc_title, url):
 
 
 def scan_article(url: str):
-    soup = BeautifulSoup(requests.get(url).text, Constants.HTML_PARSER)
+    soup = BeautifulSoup(requests.get(url).text, common.Constants.HTML_PARSER)
     article_title = soup.select_one('h1.ah-title > a').string
     local_name = __get_local_name(article_title, url)
     domain_tag = '-52'
@@ -76,7 +75,7 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
     while page <= max_page:  # Page-wise
         start_time = datetime.now()  # A timer for monitoring performance
         url = placeholder + str(page)
-        soup = BeautifulSoup(requests.get(url).text, Constants.HTML_PARSER)
+        soup = BeautifulSoup(requests.get(url).text, common.Constants.HTML_PARSER)
         rows = soup.select('div.ab-webzine > div.wz-item')
 
         for i, row in enumerate(rows):  # Inspect the rows
@@ -139,8 +138,8 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-TOO_YOUNG_DAY = 1
-TOO_OLD_DAY = 3
+TOO_YOUNG_DAY = 0
+TOO_OLD_DAY = 2
 SCANNING_SPAN = 30
 STARTING_PAGE = 1
 
