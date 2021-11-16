@@ -32,13 +32,21 @@ def log(message: str, has_tst: bool = True):
 
 
 def __get_date_difference(tst_str: str) -> int:
-    try:
-        tst = datetime.strptime(tst_str, '%b %d, %Y, %I:%M %p')  # Oct 21, 2021, 3:10 AM
-        date = datetime(tst.year, tst.month, tst.day)
-        now = datetime.now()
-        return (now - date).days
-    except Exception as tst_exception:
-        print('(%s) The timestamp did not match the format: %s.' % (tst_exception, tst_str))
+    if ',' in tst_str:
+        try:
+            tst = datetime.strptime(tst_str, '%b %d, %Y, %I:%M %p')  # Oct 21, 2021, 3:10 AM
+            return (datetime.now() - datetime(tst.year, tst.month, tst.day)).days
+        except Exception as tst_exception:
+            print('Error: %s.' % tst_exception)
+    else:  # Assuming '2011년 10월 3일'
+        try:
+            chunks = tst_str.split(' ')
+            y = int(chunks[0].strip('년'))
+            m = int(chunks[1].strip('월'))
+            d = int(chunks[2].strip('일'))
+            return (datetime.now() - datetime(y, m, d)).days
+        except Exception as tst_exception:
+            print('Error: %s.' % tst_exception)
 
 
 def initiate_browser():
