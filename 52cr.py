@@ -11,8 +11,6 @@ from bs4 import BeautifulSoup
 class Constants:
     HTML_PARSER = 'html.parser'
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
-    TOO_YOUNG_DAY = 0
-    TOO_OLD_DAY = 2
 
     ROOT_DOMAIN = common.build_tuple('52_DOMAINS.pv')
     IGNORED_URLS = common.build_tuple('52_IGNORED_URLS.pv')
@@ -86,10 +84,10 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
                 tst_str = row.select_one('div.wz-item-meta > span > span.date').string
                 day_diff = common.get_date_difference(tst_str)
                 if day_diff:
-                    if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                    if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                         log('#%02d | Skipping the too young.' % (i + 1), False)
                         continue  # Move to the next row
-                    elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
+                    elif day_diff >= TOO_OLD_DAY:  # Too old.
                         log('#%02d | Skipping the too old.' % (i + 1), False)
                         # No need to scan older rows.
                         log('Page %d took %.2fs. Stop searching for older rows.\n'
@@ -141,5 +139,10 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
+TOO_YOUNG_DAY = 1
+TOO_OLD_DAY = 3
+SCANNING_SPAN = 30
+STARTING_PAGE = 1
+
 time.sleep(random.uniform(60, 3600))
-process_domain(Constants.ROOT_DOMAIN, scanning_span=5, starting_page=1)
+process_domain(Constants.ROOT_DOMAIN, scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)

@@ -10,8 +10,6 @@ import downloader
 
 class Constants:
     HTML_PARSER = 'html.parser'
-    TOO_YOUNG_DAY = 1
-    TOO_OLD_DAY = 3
 
     NORMAL_DOMAINS = common.build_tuple_of_tuples('AC_NORMAL_DOMAINS.pv')
     PROXY_DOMAINS = common.build_tuple_of_tuples('AC_PROXY_DOMAINS.pv')
@@ -133,13 +131,13 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                         continue  # Move to the next row
                     else:
                         day_diff = common.get_date_difference(tst_str)
-                        if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                        if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                             print('#%02d (%s) \t| Skipping the too young.' % (i + 1, likes))
                             continue  # Move to the next row
-                        elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
+                        elif day_diff >= TOO_OLD_DAY:  # Too old.
                             print('#%02d (%s) \t| Skipping the too old.' % (i + 1, likes))
                             # No need to scan older rows.
-                            log('Page %d took %.2fs. Stop searching.\n' %
+                            log('Page %d took %.2fs. Stop searching for older rows.\n' %
                                 (page, common.get_elapsed_sec(start_time)), False)
                             return tuple(to_scan)
                         else:  # Mature
@@ -191,7 +189,12 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
+TOO_YOUNG_DAY = 1
+TOO_OLD_DAY = 3
+SCANNING_SPAN = 10
+STARTING_PAGE = 1
+
 time.sleep(random.uniform(60, 3600))
-process_domain(Constants.NORMAL_DOMAINS, scanning_span=10, starting_page=1)
+process_domain(Constants.NORMAL_DOMAINS, scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)
 time.sleep(random.uniform(30, 300))
-process_domain(Constants.PROXY_DOMAINS, scanning_span=10, starting_page=1)
+process_domain(Constants.PROXY_DOMAINS, scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)

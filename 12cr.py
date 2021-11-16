@@ -11,8 +11,6 @@ from bs4 import BeautifulSoup
 class Constants:
     HTML_PARSER = 'html.parser'
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
-    TOO_YOUNG_DAY = 0
-    TOO_OLD_DAY = 2
 
     ROOT_DOMAIN = common.build_tuple('12_DOMAINS.pv')
     IGNORED_URLS = common.build_tuple('12_IGNORED_URLS.pv')
@@ -215,5 +213,10 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
+TOO_YOUNG_DAY = 0
+TOO_OLD_DAY = 2
+SCANNING_SPAN = 5
+STARTING_PAGE = 1
+
 time.sleep(random.uniform(60, 3600))
-process_domain(Constants.ROOT_DOMAIN, scanning_span=5, starting_page=1)
+process_domain(Constants.ROOT_DOMAIN, scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)

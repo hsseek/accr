@@ -18,8 +18,6 @@ from bs4 import BeautifulSoup
 class Constants:
     HTML_PARSER = 'html.parser'
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
-    TOO_YOUNG_DAY = 1
-    TOO_OLD_DAY = 3
 
     ROOT_DOMAIN = common.read_from_file('DC_ROOT.pv')
     ACCOUNT, PASSWORD = common.build_tuple('DC_ACCOUNT.pv')
@@ -297,13 +295,13 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                 tst_str = row.select_one('td.gall_date')['title'].split(' ')[0]  # 2021-09-19 23:47:42
                 day_diff = __get_date_difference(tst_str)
                 if day_diff:
-                    if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                    if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                         print('#%02d (%s) \t| Skipping the too young.' % (i + 1, likes))
                         continue  # Move to the next row
-                    elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
+                    elif day_diff >= TOO_OLD_DAY:  # Too old.
                         print('#%02d (%s) \t| Skipping the too old.' % (i + 1, likes))
                         # No need to scan older rows.
-                        log('Page %d took %.2fs. Stop searching for older articles\n' %
+                        log('Page %d took %.2fs. Stop searching for older rows.\n' %
                             (page, common.get_elapsed_sec(start_time)), False)
                         return tuple(to_scan)
                     else:  # Mature
@@ -355,10 +353,15 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
+TOO_YOUNG_DAY = 1
+TOO_OLD_DAY = 3
+SCANNING_SPAN = 30
+STARTING_PAGE = 1
+
 time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
 for domain, min_likes_str in Constants.GALLERY_DOMAINS:
     browser = initiate_browser()
     try:
-        process_domain(domain, min_likes=int(min_likes_str), scanning_span=15, starting_page=1)
+        process_domain(domain, min_likes=int(min_likes_str), scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)
     finally:
         browser.quit()
