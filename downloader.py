@@ -1,4 +1,6 @@
 import os
+import time
+from glob import glob
 import common
 import requests
 
@@ -76,6 +78,35 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
                 print('%s-*.%s on %s' % (file_name, extension, source_url))
                 # Download the file.
                 download(source_url, '%s-%03d.%s' % (file_name, i, extension))
+
+
+def wait_finish_downloading(temp_dir_path: str, log_path: str, loading_sec: float, trial: int = 0):
+    seconds = 0
+    check_interval = 1
+    timeout_multiplier = (trial + 1) ** 4 + 1  # 2, 17, 82, ...
+
+    # The timeout: 10 ~ 480
+    timeout = max(10 * (trial + 1), int(loading_sec * timeout_multiplier))
+    if trial > 0:
+        common.log('Trial: %d / Timeout: %d(<-%.1f)' % (trial, timeout, loading_sec), log_path, False)
+    if timeout > 480:
+        timeout = 480
+
+    last_size = 0
+    while seconds <= timeout:
+        current_size = sum(os.path.getsize(f) for f in glob(temp_dir_path + '*') if os.path.isfile(f))
+        if current_size == last_size and last_size > 0:
+            return True
+        print('Waiting to finish downloading. (%d/%d)' % (seconds, timeout))
+        # Report
+        if current_size != last_size:
+            print('%.1f -> %.1f MB' % (last_size / 1000000, current_size / 1000000))
+        # Wait
+        time.sleep(check_interval)
+        seconds += check_interval
+        last_size = current_size
+    print('Download timeout reached.')
+    return False  # Timeout
 
 
 def download(url: str, local_name: str):

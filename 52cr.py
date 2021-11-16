@@ -13,7 +13,6 @@ class Constants:
 
     ROOT_DOMAIN = common.build_tuple('52_DOMAINS.pv')
     IGNORED_URLS = common.build_tuple('52_IGNORED_URLS.pv')
-    LOG_PATH = common.read_from_file('52_LOG_PATH.pv')
 
 
 def log(message: str, has_tst: bool = True):

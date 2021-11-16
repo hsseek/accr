@@ -55,11 +55,13 @@ def get_free_proxies():
 def get_proxy_session(sampling_url: str, log_path: str):
     timeout = 3
     session = requests.session()
-    code = session.get(sampling_url, timeout=timeout).status_code
-    if code == 200:
+    try:
+        code = session.get(sampling_url, timeout=timeout).status_code
+        if code != 200:
+            log('Error: HTTP response %d.' % code, log_path)
+        print('The url is accessible.')
         return session
-    else:
-        log('Error: HTTP response %d.' % code, log_path)
+    except requests.exceptions.ReadTimeout:
         free_proxy_list = get_free_proxies()
         for i, proxy in enumerate(free_proxy_list):
             try:
@@ -116,6 +118,7 @@ def split_on_last_pattern(string: str, pattern: str) -> ():
 class Constants:
     HTML_PARSER = 'html.parser'
     DOWNLOAD_PATH = read_from_file('DOWNLOAD_PATH.pv')
+    DRIVER_PATH = read_from_file('DRIVER_PATH.pv')
     DUMP_PATH = read_from_file('DUMP_PATH.pv')
     IGNORED_TITLE_PATTERNS = build_tuple('IGNORED_TITLE_PATTERNS.pv')
     IGNORED_FILE_NAME_PATTERNS = build_tuple('IGNORED_FILENAMES.pv')

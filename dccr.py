@@ -14,23 +14,23 @@ import traceback
 from datetime import datetime
 from bs4 import BeautifulSoup
 
+import downloader
+
 
 class Constants:
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
 
     ROOT_DOMAIN = common.read_from_file('DC_ROOT.pv')
+    GALLERY_DOMAINS = common.build_tuple_of_tuples('DC_DOMAINS.pv')
     ACCOUNT, PASSWORD = common.build_tuple('DC_ACCOUNT.pv')
 
-    GALLERY_DOMAINS = common.build_tuple_of_tuples('DC_DOMAINS.pv')
-    LOG_PATH = common.read_from_file('DC_LOG_PATH.pv')
-    DRIVER_PATH = common.read_from_file('DRIVER_PATH.pv')
-
-    DESTINATION_PATH = common.read_from_file('DOWNLOAD_PATH.pv')
+    DESTINATION_PATH = common.Constants.DOWNLOAD_PATH
     TMP_DOWNLOAD_PATH = common.read_from_file('DC_DOWNLOAD_PATH.pv')
+    LOG_PATH = common.read_from_file('DC_LOG_PATH.pv')
 
 
 def log(message: str, has_tst: bool = True):
-    path = common.read_from_file('DC_LOG_PATH.pv')
+    path = Constants.LOG_PATH
     common.log(message, path, has_tst)
 
 
@@ -45,7 +45,7 @@ def __get_date_difference(tst_str: str) -> int:
 
 def initiate_browser():
     # A chrome web driver with headless option
-    service = Service(Constants.DRIVER_PATH)
+    service = Service(common.Constants.DRIVER_PATH)
     options = webdriver.ChromeOptions()
     options.add_experimental_option("prefs", {
         "download.default_directory": Constants.TMP_DOWNLOAD_PATH,
@@ -77,34 +77,6 @@ def element_exists_by_class(driver: webdriver.Chrome, class_name: str) -> bool:
 def mark_and_move(current_path: str, destination_path: str):
     for file in os.listdir(current_path):
         os.rename(current_path + file, destination_path + 'err-' + file)
-
-
-def wait_for_downloading(temp_dir_path: str, loading_sec: float, trial: int = 0):
-    seconds = 0
-    check_interval = 1
-    timeout_multiplier = (trial + 1) ** 4 + 1  # (2, 5, 17, 65, ... ) 1, 16, 81
-
-    # The timeout: 10 ~ 600
-    timeout = max(10 * (trial + 1), int(loading_sec * timeout_multiplier))
-    log('Trial: %d / Timeout: %d(<-%.1f)' % (trial, timeout, loading_sec), False)
-    if timeout > 420:
-        timeout = 420
-
-    last_size = 0
-    while seconds <= timeout:
-        current_size = sum(os.path.getsize(f) for f in glob(temp_dir_path + '*') if os.path.isfile(f))
-        if current_size == last_size and last_size > 0:
-            return True
-        print('Waiting to finish downloading.(%d/%d)' % (seconds, timeout))
-        # Report
-        if current_size != last_size:
-            print('%.1f -> %.1f MB' % (last_size / 1000000, current_size / 1000000))
-        # Wait
-        time.sleep(check_interval)
-        seconds += check_interval
-        last_size = current_size
-    print('Download timeout reached.')
-    return False  # Timeout
 
 
 def scan_article(url: str):
@@ -142,7 +114,7 @@ def scan_article(url: str):
         # Use the article number as the file name.
         formatted_file_name = __get_no_from_url(url)
 
-    download_successful = click_download_button(browser, url, Constants.TMP_DOWNLOAD_PATH, loading_sec)
+    download_successful = click_download_button(url, Constants.TMP_DOWNLOAD_PATH, loading_sec)
 
     if not download_successful:  # Timeout reached again. Log and move to the next article.
         log('Error: Download failed.')
@@ -151,11 +123,11 @@ def scan_article(url: str):
             log('Error: Files left after download failure.')
         return  # Nothing to do.
 
-    format_downloaded_file(formatted_file_name)
+    __format_downloaded_file(formatted_file_name)
 
 
-def format_downloaded_file(formatted_file_name):
-    # Process the downloaded file. (Mostly, a zip file or an image)
+# Process the downloaded file. (Mostly, a zip file or an image)
+def __format_downloaded_file(formatted_file_name):
     try:
         domain_tag = '-dc-'  # Note that it includes a tailing '-'.
 
@@ -203,7 +175,7 @@ def check_auth(url):
             return False  # Cannot proceed.
 
 
-def click_download_button(temp_browser, url: str, tmp_download_path: str, loading_sec: float) -> bool:
+def click_download_button(url: str, tmp_download_path: str, loading_sec: float) -> bool:
     # The download buttons
     btn_class_name = 'btn_file_dw'
     single_download_btn_xpath_1 = '//*[@id="container"]/section/article[2]/div[1]/div/div[7]/ul/li/a'
@@ -213,28 +185,30 @@ def click_download_button(temp_browser, url: str, tmp_download_path: str, loadin
         try:
             if i > 0:  # Has failed. Refresh the browser.
                 log('Download failed with trial #%d.' % i)
-                temp_browser.get(url)  # refresh() does not wait the page to be loaded. So, use get(url)  instead.
-            temp_browser.find_element(By.CLASS_NAME, btn_class_name).click()
+                browser.get(url)  # refresh() does not wait the page to be loaded. So, use get(url)  instead.
+            browser.find_element(By.CLASS_NAME, btn_class_name).click()
             print('"Download all" button located.')
-            successful = wait_for_downloading(tmp_download_path, loading_sec, trial=i)
+            successful = downloader.wait_finish_downloading(tmp_download_path, Constants.LOG_PATH, loading_sec, trial=i)
             if successful:  # Without reaching timeout
                 break
             # Else, loop again.
         except selenium.common.exceptions.NoSuchElementException:
             try:
-                temp_browser.find_element(By.XPATH, single_download_btn_xpath_1).click()
+                browser.find_element(By.XPATH, single_download_btn_xpath_1).click()
                 print('Download button 1 located.')
 
                 # Don't wait as the session has waited long enough.
-                successful = wait_for_downloading(tmp_download_path, loading_sec, trial=i)
+                successful = downloader.wait_finish_downloading(tmp_download_path, Constants.LOG_PATH,
+                                                                loading_sec, trial=i)
                 if successful:
                     break
             except selenium.common.exceptions.NoSuchElementException:
                 try:
-                    temp_browser.find_element(By.XPATH, single_download_btn_xpath_2).click()
+                    browser.find_element(By.XPATH, single_download_btn_xpath_2).click()
                     print('Download button 2 located.')
 
-                    successful = wait_for_downloading(tmp_download_path, loading_sec, trial=i)
+                    successful = downloader.wait_finish_downloading(tmp_download_path, Constants.LOG_PATH,
+                                                                    loading_sec, trial=i)
                     if successful:
                         break
                 except selenium.common.exceptions.NoSuchElementException:
@@ -249,7 +223,7 @@ def click_download_button(temp_browser, url: str, tmp_download_path: str, loadin
         except Exception as download_btn_exception:
             log('Download button exception: %s' % download_btn_exception)
             return False  # Something went wrong trying 'Download all'
-    else:  # The loop terminated without break, which means successful download.
+    else:  # The loop terminated without break, which means all the trials failed.
         return False
 
     # Did not encounter exceptions. Downloaded the file successfully.
