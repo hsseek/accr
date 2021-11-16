@@ -75,6 +75,14 @@ def get_proxy_session(sampling_url: str, log_path: str):
     return requests.session()  # Try again with a normal session.
 
 
+def get_tor_session():
+    req = requests.session()
+    # Tor uses the 9050 port as the default socks port
+    req.proxies = {'http': 'socks5://127.0.0.1:9050',
+                   'https': 'socks5://127.0.0.1:9050'}
+    return req
+
+
 def get_ip(session: requests.Session) -> str:
     return session.get("http://httpbin.org/ip", timeout=1).text.split('"')[-2]
 

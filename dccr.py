@@ -21,7 +21,7 @@ class Constants:
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
 
     ROOT_DOMAIN = common.read_from_file('DC_ROOT.pv')
-    GALLERY_DOMAINS = common.build_tuple_of_tuples('DC_DOMAINS.pv')
+    SUBDIRECTORIES = common.build_tuple_of_tuples('DC_SUBDIRECTORIES.pv')
     ACCOUNT, PASSWORD = common.build_tuple('DC_ACCOUNT.pv')
 
     DESTINATION_PATH = common.Constants.DOWNLOAD_PATH
@@ -332,9 +332,9 @@ SCANNING_SPAN = 30
 STARTING_PAGE = 1
 
 time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
-for domain, min_likes_str in Constants.GALLERY_DOMAINS:
+for subdirectory, min_likes_str in Constants.SUBDIRECTORIES:
     browser = initiate_browser()
     try:
-        process_domain(domain, min_likes=int(min_likes_str), scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)
+        process_domain(subdirectory, min_likes=int(min_likes_str), scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)
     finally:
         browser.quit()

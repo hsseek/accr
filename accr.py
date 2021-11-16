@@ -19,14 +19,6 @@ def log(message: str, has_tst: bool = True):
     common.log(message, path, has_tst)
 
 
-def get_tor_session():
-    req = requests.session()
-    # Tor uses the 9050 port as the default socks port
-    req.proxies = {'http': 'socks5://127.0.0.1:9050',
-                   'https': 'socks5://127.0.0.1:9050'}
-    return req
-
-
 def __get_local_name(article_title: str, url: str, likes: str):
     url_chunks = url.split('?')[0].split('/')
     article_id = url_chunks[-1]

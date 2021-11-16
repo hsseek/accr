@@ -18,7 +18,6 @@ import downloader
 
 
 class Constants:
-    TIMEOUT = 60
     ROOT_DOMAIN = common.read_from_file('HI_ROOT.pv')
     SUBDIRECTORIES = common.build_tuple_of_tuples('HI_SUBDIRECTORIES.pv')
 
@@ -50,10 +49,12 @@ def initiate_browser():
         "download.default_directory": Constants.TMP_DOWNLOAD_PATH,
         "download.prompt_for_download": False
     })
+    options.add_argument('--proxy-server=socks5://127.0.0.1:9050')
     options.add_argument('headless')
     options.add_argument('disable-gpu')
     # options.add_experimental_option("detach", True)
     driver = webdriver.Chrome(service=service, options=options)
+    driver.set_page_load_timeout(120)
     return driver
 
 
@@ -77,7 +78,10 @@ def try_access_page(driver: webdriver.Chrome, url: str, trial: int = 3):
             break
         except selenium.common.exceptions.TimeoutException:
             # It happens occasionally. Just try again.
-            log('Warning: Timeout reached while trying loading the article.(Trial #%d)' % (trial + 1))
+            log('Warning: Timeout reached while trying loading the article.')
+        except selenium.common.exceptions.WebDriverException as load_exception:
+            time.sleep(60)
+            log('Warning: Cannot access the page.(%s)' % load_exception)
     else:
         log('Error: Failed to load the article.')
         return False
@@ -141,7 +145,7 @@ def __move_downloaded_file(tag_name: str):
                 file_count = len(zip_ref.namelist())
                 dir_name = '%03d-' % file_count + dir_name
                 # Extract all to the composed destination path.
-                destination = common.Constants.DOWNLOAD_PATH + dir_name + '/'
+                destination = Constants.DESTINATION_PATH + dir_name + '/'
                 zip_ref.extractall(destination)
             os.remove(zip_file_path)  # Remove the zip file.
     except Exception as post_download_exception:
@@ -150,20 +154,21 @@ def __move_downloaded_file(tag_name: str):
 
 def wait_for_download_start(dl_browser: webdriver.Chrome, loading_sec: float):
     seconds = 0
-    check_interval = 2
+    check_interval = 5
     progress_bar_id = 'progressbar'
     progress_value_attr = 'aria-valuenow'
 
     # The timeout: 20 ~ 900
     timeout = max(20.0, loading_sec * 50)
-    if timeout > 900:
-        timeout = 900
+    if timeout > 800:
+        timeout = 800 * random.uniform(1, 1.2)
 
     # Is progress bar changing?
     prev_progress = 0
     has_started = False
 
     dl_btn = dl_browser.find_element(By.ID, progress_bar_id)
+    consecutive_failure = 0
     while seconds <= timeout:
         time.sleep(check_interval)
         seconds += check_interval
@@ -180,9 +185,14 @@ def wait_for_download_start(dl_browser: webdriver.Chrome, loading_sec: float):
             # Check the progress
             if progress > prev_progress:  # Download ongoing
                 print('Download script progress %.0f' % progress + '% ' + '(%d/%d)' % (seconds, timeout))
+                consecutive_failure = 0
             else:
-                print('Progress stopped.')
-                return False  # Download stopped.
+                if consecutive_failure <= 3:
+                    print('Download script progress %.0f' % progress + '% ' + '(%d/%d) (STALLED)' % (seconds, timeout))
+                    consecutive_failure += 1
+                else:
+                    print('Progress stopped.')
+                    return False  # It is sure that download stopped.
         elif has_started:
             return True  # Download button visible again. Finished downloading.
         # else: Download has not started. Wait to start download.
@@ -195,15 +205,17 @@ def click_download_button(dl_browser: webdriver.Chrome, loading_sec: float) -> b
     try:
         dl_browser.find_element(By.ID, btn_id).click()
         print('"Download" button located.')
-        wait_for_download_start(dl_browser, loading_sec)
+        has_started = wait_for_download_start(dl_browser, loading_sec)
     except selenium.common.exceptions.NoSuchElementException:
         log('Warning: Cannot locate the download button.')
         return False  # Failed in clicking the download button. Nothing to expect.
     except Exception as download_btn_exception:
         log('Error: Download button exception: %s' % download_btn_exception)
         return False  # Something went wrong trying 'Download'
+    if not has_started:
+        return False
 
-    # Did not encounter exceptions.
+    # Download started and it did not encounter exceptions.
     # Part 2. Wait to finish downloading.
     is_finished = downloader.wait_finish_downloading(Constants.TMP_DOWNLOAD_PATH, Constants.LOG_PATH, loading_sec, 1)
     if is_finished:
