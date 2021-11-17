@@ -109,31 +109,36 @@ def scan_article(article_data: ()):
     common.check_dir_exists(Constants.TMP_DOWNLOAD_PATH)
 
     # Load the article.
-    start_time = datetime.now()
+    page_load_start_time = datetime.now()
     try:
         is_on_page = try_access_page(article_browser, article_url)
         if not is_on_page:
             article_browser.quit()
             return False
-        loading_sec = common.get_elapsed_sec(start_time)
+        loading_sec = common.get_elapsed_sec(page_load_start_time)
 
+        # Click the download button to start download script.
+        download_start_time = datetime.now()
         download_successful = click_download_button(article_browser, loading_sec)
-        if download_successful:
-            __move_downloaded_file(tag_name)
-        else:  # Timeout reached again. Log and move to the next article.
-            article_browser.quit()
-            log('Warning: Download failed.')
-            if len(os.listdir(Constants.TMP_DOWNLOAD_PATH)) > 0:
-                mark_and_move(Constants.TMP_DOWNLOAD_PATH, Constants.DESTINATION_PATH)
-                log('Error: Files left after download failure.')
-            return False  # Nothing to do.
+        downloading_sec = common.get_elapsed_sec(download_start_time)
+
+        time_report = 'Page loading: %.0f" / Downloading: %.1f\'' % (loading_sec, (downloading_sec / 60))
+        article_browser.quit()
     except Exception as scan_article_exception:
         log('Warning: Cannot process the article.(%s)' % scan_article_exception)
         article_browser.quit()
         return False
-    # Didn't encounter exceptions.
-    article_browser.quit()
-    return True
+
+    if download_successful:
+        log('Download finished successfully.(%s)' % time_report)
+        __move_downloaded_file(tag_name)
+        return True
+    else:
+        log('Warning: Download failed.(%s)' % time_report)
+        if len(os.listdir(Constants.TMP_DOWNLOAD_PATH)) > 0:
+            mark_and_move(Constants.TMP_DOWNLOAD_PATH, Constants.DESTINATION_PATH)
+            log('Error: Files left after download failure.')
+        return False  # Nothing to do.
 
 
 # Process the downloaded zip file.
@@ -193,11 +198,11 @@ def wait_for_download_start(dl_browser: webdriver.Chrome, loading_sec: float):
 
             # Check the progress
             if progress > prev_progress:  # Download ongoing
-                print('Download script progress %.0f' % progress + '%\t' + '(%d/%d)' % (seconds, timeout))
+                print('Download script progress %.0f ' % progress + '%\t' + '(%d/%d)' % (seconds, timeout))
                 consecutive_failures = 0
             else:
                 if consecutive_failures < 10:
-                    print('Download script progress %.0f' % progress + '%\t' + '(%d/%d)\t(STALLED)' % (seconds, timeout))
+                    print('Download script progress %.0f ' % progress + '%\t' + '(%d/%d)\t(STALLED)' % (seconds, timeout))
                     consecutive_failures += 1
                 else:  # i.e., 10 consecutive failures.
                     log('Warning: Download progress stopped.')
@@ -230,9 +235,9 @@ def click_download_button(dl_browser: webdriver.Chrome, loading_sec: float) -> b
 
     # Download started and it did not encounter exceptions.
     # Part 2. Wait to finish downloading.
-    is_finished = downloader.wait_finish_downloading(Constants.TMP_DOWNLOAD_PATH, Constants.LOG_PATH, loading_sec, 1)
+    is_finished = downloader.wait_finish_downloading(Constants.TMP_DOWNLOAD_PATH, Constants.LOG_PATH, loading_sec, 1,
+                                                     is_logged=False)
     if is_finished:
-        log('Download finished successfully.')
         return True
     else:
         log('Warning: crdownload timeout.')
@@ -315,7 +320,7 @@ def process_domain(scan_list: [], placeholder: str, domain_tag: str, scanning_sp
         domain_start_time = datetime.now()
         log('Looking up %s' % placeholder.split('?')[0])
         append_articles_to_scan(scan_list, placeholder, domain_tag, scanning_span, starting_page)
-        log('Finished scanning %s in %d".\n' %
+        log('Finished processing %s in %d".\n' %
             (placeholder, int(common.get_elapsed_sec(domain_start_time))), False)
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
@@ -347,8 +352,8 @@ for count, article_info in enumerate(main_scan_list):
         if is_article_scan_successful:
             break
         else:
-            print('Warning: Scanning failed.')
+            print('Warning: processing failed.')
     else:
-        log('Error: Scanning failed multiple times. Move to the next article.')
-    log("Scanning finished in %.1f min.(%d/%d)" %
-        ((common.get_elapsed_sec(scan_start_time) / 60), count + 1, len(main_scan_list)), False)
+        log('Error: Processing failed multiple times. Move to the next article.')
+    log("(%d/%d) Processing finished in %.1f min." %
+        (count + 1, len(main_scan_list), (common.get_elapsed_sec(scan_start_time) / 60)), False)

@@ -80,17 +80,19 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
                 download(source_url, '%s-%03d.%s' % (file_name, i, extension))
 
 
-def wait_finish_downloading(temp_dir_path: str, log_path: str, loading_sec: float, trial: int = 0):
+def wait_finish_downloading(temp_dir_path: str, log_path: str, loading_sec: float, trial: int = 0,
+                            is_logged: bool = True):
     seconds = 0
     check_interval = 1
     timeout_multiplier = (trial + 1) ** 4 + 1  # 2, 17, 82, ...
+    max_timeout = 480
 
     # The timeout: 10 ~ 480
     timeout = max(10 * (trial + 1), int(loading_sec * timeout_multiplier))
-    if trial > 0:
-        common.log('Trial: %d / Timeout: %d(<-%.1f)' % (trial, timeout, loading_sec), log_path, False)
-    if timeout > 480:
-        timeout = 480
+    if timeout > max_timeout:
+        timeout = max_timeout
+    if is_logged:
+        common.log('Trial: %d / Timeout: %d(<-%.1f)' % (trial + 1, timeout, loading_sec), log_path, False)
 
     last_size = 0
     while seconds <= timeout:
