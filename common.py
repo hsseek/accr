@@ -19,7 +19,7 @@ def log(message: str, path: str, has_tst: bool = True):
     print(message)
 
 
-def pause_briefly(min_pause: float = 2, max_pause: float = 6):
+def pause_briefly(min_pause=2, max_pause=6):
     pause = random.uniform(min_pause, max_pause)
     print('Pause for %.1f.' % pause)
     time.sleep(pause)
@@ -31,7 +31,7 @@ def get_str_time() -> str:
 
 def check_dir_exists(dir_path: str):
     if not os.path.exists(dir_path):
-        os.mkdir(dir_path)
+        os.makedirs(dir_path)
         return False  # Didn't exist, but created one.
     else:
         return True  # Already exists.

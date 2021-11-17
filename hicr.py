@@ -91,7 +91,7 @@ def try_access_page(driver: webdriver.Chrome, url: str, trial: int = 3):
             # It happens occasionally. Just try again.
             log('Warning: Timeout reached while trying loading the article.')
         except selenium.common.exceptions.WebDriverException as load_exception:
-            time.sleep(60)
+            common.pause_briefly(40, 80)
             log('Warning: Cannot access the page.(%s)' % load_exception)
     else:
         log('Error: Failed to load the article.')
