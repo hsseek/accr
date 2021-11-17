@@ -164,9 +164,7 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
             page_index = '?cut=%d&p=' % min_likes
             scan_list = get_entries_to_scan(url + page_index, min_likes, scanning_span, starting_page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
-                pause = random.uniform(3, 6)
-                print('Pause for %.1f.' % pause)
-                time.sleep(pause)
+                common.pause_briefly()
 
                 article_url = url + str(article_no)
                 scan_start_time = datetime.now()

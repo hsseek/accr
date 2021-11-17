@@ -99,11 +99,12 @@ def try_access_page(driver: webdriver.Chrome, url: str, trial: int = 3):
     return True
 
 
-def scan_article(article_data: ()):
+def scan_article(url: str, tag_name: str = None):
+    min_thumbnail_count = 4
+
     # Start a new session because clicking Download button companies irritating pop-ups
-    article_url, tag_name = article_data
     article_browser = initiate_browser()
-    log('\nProcessing %s' % article_url)
+    log('\nProcessing %s' % url)
 
     # A temporary folder to store the zip file.
     common.check_dir_exists(Constants.TMP_DOWNLOAD_PATH)
@@ -111,11 +112,18 @@ def scan_article(article_data: ()):
     # Load the article.
     page_load_start_time = datetime.now()
     try:
-        is_on_page = try_access_page(article_browser, article_url)
+        is_on_page = try_access_page(article_browser, url)
         if not is_on_page:
             article_browser.quit()
             return False
         loading_sec = common.get_elapsed_sec(page_load_start_time)
+
+        # Exclude short ones.
+        soup = BeautifulSoup(article_browser.page_source, common.Constants.HTML_PARSER)
+        thumbnail_count = len(soup.select('ul.thumbnail-list > li'))
+        if thumbnail_count < min_thumbnail_count:
+            log('Too short(%d images), skipping.' % thumbnail_count)
+            return True
 
         # Click the download button to start download script.
         download_start_time = datetime.now()
@@ -198,11 +206,11 @@ def wait_for_download_start(dl_browser: webdriver.Chrome, loading_sec: float):
 
             # Check the progress
             if progress > prev_progress:  # Download ongoing
-                print('Download script progress %.0f ' % progress + '%\t' + '(%d/%d)' % (seconds, timeout))
+                print('Download script progress %.1f ' % progress + '%\t' + '(%d/%d)' % (seconds, timeout))
                 consecutive_failures = 0
             else:
                 if consecutive_failures < 10:
-                    print('Download script progress %.0f ' % progress + '%\t' + '(%d/%d)\t(STALLED)' % (seconds, timeout))
+                    print('Download script progress %.1f ' % progress + '%\t' + '(%d/%d)\t(STALLED)' % (seconds, timeout))
                     consecutive_failures += 1
                 else:  # i.e., 10 consecutive failures.
                     log('Warning: Download progress stopped.')
@@ -311,7 +319,7 @@ def append_articles_to_scan(scan_list: [], placeholder: str, domain_tag, scannin
 
         log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time),), False)
         consecutive_failures = 0  # Reset the consecutive failure count.
-        time.sleep(random.uniform(1, 5))
+        common.pause_briefly()
         page += 1
 
 
@@ -340,15 +348,13 @@ for subdirectory, directory_tag in Constants.SUBDIRECTORIES:
 
 # Then, scan the list
 log('%d articles to scan.' % len(main_scan_list), False)
-for count, article_info in enumerate(main_scan_list):
-    pause = random.uniform(3, 12)
-    print('Pause for %.1f.' % pause)
-    time.sleep(pause)
+for n, article_info in enumerate(main_scan_list):
+    common.pause_briefly()
 
     # Start scanning the article
     scan_start_time = datetime.now()
     for j in range(3):  # If the scan is not successful, just try it again. Interception is whimsical.
-        is_article_scan_successful = scan_article(article_info)
+        is_article_scan_successful = scan_article(url=article_info[0], tag_name=article_info[1])
         if is_article_scan_successful:
             break
         else:
@@ -356,4 +362,4 @@ for count, article_info in enumerate(main_scan_list):
     else:
         log('Error: Processing failed multiple times. Move to the next article.')
     log("(%d/%d) Processing finished in %.1f min." %
-        (count + 1, len(main_scan_list), (common.get_elapsed_sec(scan_start_time) / 60)), False)
+        (n + 1, len(main_scan_list), (common.get_elapsed_sec(scan_start_time) / 60)), False)

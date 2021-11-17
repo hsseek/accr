@@ -300,7 +300,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
         else:
             prev_url = browser.current_url  # Store the url for the next comparison.
         log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)), False)
-        time.sleep(random.uniform(0.5, 2.5))
+        common.pause_briefly(1, 4)
         page += 1
     return tuple(to_scan)
 
@@ -311,9 +311,7 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
         log('Looking up %s' % gall)
         scan_list = get_entries_to_scan(gall, min_likes, scanning_span, starting_page)
         for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
-            pause = random.uniform(2, 4)
-            print('Pause for %.1f.' % pause)
-            time.sleep(pause)
+            common.pause_briefly()
 
             article_url = gall.replace('lists', 'view').replace('page', 'no').replace('%d', str(article_no))
             scan_start_time = datetime.now()

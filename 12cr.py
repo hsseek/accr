@@ -183,7 +183,7 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
                 log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
                 continue
         log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)), False)
-        time.sleep(random.uniform(0.5, 2.5))
+        common.pause_briefly(0.5, 2.5)
         page += 1
     return tuple(to_scan)
 
@@ -196,9 +196,7 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
             page_index = '/bbs/board.php?bo_table=gal01&page='
             scan_list = get_entries_to_scan(domain + page_index, scanning_span, starting_page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
-                pause = random.uniform(3, 6)
-                print('Pause for %.1f.' % pause)
-                time.sleep(pause)
+                common.pause_briefly()
 
                 article_url = domain + '/bbs/board.php?bo_table=gal01&wr_id=' + str(article_no)
                 scan_start_time = datetime.now()

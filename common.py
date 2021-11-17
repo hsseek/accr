@@ -1,3 +1,6 @@
+import random
+import time
+
 from PIL import Image
 from datetime import datetime
 import os
@@ -14,6 +17,12 @@ def log(message: str, path: str, has_tst: bool = True):
             message += '\t(%s)' % get_str_time()
         f.write(message + '\n')
     print(message)
+
+
+def pause_briefly(min_pause: float = 2, max_pause: float = 6):
+    pause = random.uniform(min_pause, max_pause)
+    print('Pause for %.1f.' % pause)
+    time.sleep(pause)
 
 
 def get_str_time() -> str:
