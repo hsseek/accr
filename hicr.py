@@ -1,23 +1,26 @@
 import os
 import zipfile
 from glob import glob
-
 import selenium.common.exceptions
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-
-import common
 import random
 import time
 import traceback
 from datetime import datetime
 from bs4 import BeautifulSoup
-
+import common
 import downloader
 
 
 class Constants:
+    TOO_YOUNG_DAY = 1
+    TOO_OLD_DAY = 3
+    SCANNING_SPAN = 2
+    STARTING_PAGE = 1
+    IS_START_POSTPONED = True
+
     ROOT_DOMAIN = common.read_from_file('HI_ROOT.pv')
     SUBDIRECTORIES = common.build_tuple_of_tuples('HI_SUBDIRECTORIES.pv')
 
@@ -269,10 +272,10 @@ def append_articles_to_scan(scan_list: [], placeholder: str, domain_tag, scannin
                 tst_str = row.select_one('div > div > p.date').string  # 2021-09-19 23:47:42
                 day_diff = __get_date_difference(tst_str)
                 if day_diff:
-                    if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                    if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                         print('#%02d | Skipping the too young.' % (i + 1))
                         continue  # Move to the next row
-                    elif day_diff >= TOO_OLD_DAY:  # Too old.
+                    elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
                         print('#%02d | Skipping the too old.' % (i + 1))
                         # No need to scan older rows.
                         log('Page %d took %.2fs. Stop searching for older rows.\n' %
@@ -318,19 +321,15 @@ def process_domain(scan_list: [], placeholder: str, domain_tag: str, scanning_sp
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-TOO_YOUNG_DAY = 1
-TOO_OLD_DAY = 3
-SCANNING_SPAN = 2
-STARTING_PAGE = 1
-
-time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
+if Constants.IS_START_POSTPONED:
+    time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
 main_scan_list = []
 for subdirectory, directory_tag in Constants.SUBDIRECTORIES:
     browser = initiate_browser()
     try:
         # Append to the scanning list.
         process_domain(main_scan_list, Constants.ROOT_DOMAIN + subdirectory, directory_tag,
-                       scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)
+                       scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
     finally:
         browser.quit()
 
