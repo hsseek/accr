@@ -103,9 +103,7 @@ def scan_article(article_data: ()):
     log('\nProcessing %s' % article_url)
 
     # A temporary folder to store the zip file.
-    # The folder name can be anything, but use the article number to prevent duplicate names.
-    if not os.path.exists(Constants.TMP_DOWNLOAD_PATH):
-        os.makedirs(Constants.TMP_DOWNLOAD_PATH)
+    common.check_dir_exists(Constants.TMP_DOWNLOAD_PATH)
 
     # Load the article.
     start_time = datetime.now()
@@ -166,17 +164,17 @@ def wait_for_download_start(dl_browser: webdriver.Chrome, loading_sec: float):
     progress_bar_id = 'progressbar'
     progress_value_attr = 'aria-valuenow'
 
-    # The timeout: 20 ~ 900
-    timeout = max(20.0, loading_sec * 50)
-    if timeout > 800:
-        timeout = 800 * random.uniform(1, 1.2)
+    # The timeout: 30 ~ 3000 + a
+    timeout = max(30.0, loading_sec * 180)  # Generous, as a stalled script will return False anyways.
+    if timeout > 3000:
+        timeout = 3000 * random.uniform(1, 1.2)
 
     # Is progress bar changing?
     prev_progress = 0
     has_started = False
 
     dl_btn = dl_browser.find_element(By.ID, progress_bar_id)
-    consecutive_failure = 0
+    consecutive_failures = 0
     while seconds <= timeout:
         time.sleep(check_interval)
         seconds += check_interval
@@ -192,18 +190,19 @@ def wait_for_download_start(dl_browser: webdriver.Chrome, loading_sec: float):
 
             # Check the progress
             if progress > prev_progress:  # Download ongoing
-                print('Download script progress %.0f' % progress + '% ' + '(%d/%d)' % (seconds, timeout))
-                consecutive_failure = 0
+                print('Download script progress %.0f' % progress + '%\t' + '(%d/%d)' % (seconds, timeout))
+                consecutive_failures = 0
             else:
-                if consecutive_failure <= 3:
-                    print('Download script progress %.0f' % progress + '% ' + '(%d/%d) (STALLED)' % (seconds, timeout))
-                    consecutive_failure += 1
-                else:
-                    print('Progress stopped.')
+                if consecutive_failures < 10:
+                    print('Download script progress %.0f' % progress + '%\t' + '(%d/%d)\t(STALLED)' % (seconds, timeout))
+                    consecutive_failures += 1
+                else:  # i.e., 10 consecutive failures.
+                    log('Warning: Download progress stopped.')
                     return False  # It is sure that download stopped.
         elif has_started:
             return True  # Download button visible again. Finished downloading.
         # else: Download has not started. Wait to start download.
+    log('Warning: Download script timeout.')
     return False  # Timeout reached.
 
 
@@ -230,6 +229,7 @@ def click_download_button(dl_browser: webdriver.Chrome, loading_sec: float) -> b
         log('Download finished successfully.')
         return True
     else:
+        log('Warning: crdownload timeout.')
         return False
 
 
@@ -312,7 +312,7 @@ TOO_OLD_DAY = 3
 SCANNING_SPAN = 2
 STARTING_PAGE = 1
 
-time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
+# time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
 main_scan_list = []
 for subdirectory, directory_tag in Constants.SUBDIRECTORIES:
     browser = initiate_browser()
@@ -324,7 +324,7 @@ for subdirectory, directory_tag in Constants.SUBDIRECTORIES:
         browser.quit()
 
 # Then, scan the list
-log('%d articles collected.' % len(main_scan_list), False)
+log('%d articles to scan.' % len(main_scan_list), False)
 for count, article_info in enumerate(main_scan_list):
     pause = random.uniform(3, 12)
     print('Pause for %.1f.' % pause)
@@ -340,5 +340,5 @@ for count, article_info in enumerate(main_scan_list):
             print('Warning: Scanning failed.')
     else:
         log('Error: Scanning failed multiple times. Move to the next article.')
-    log('Scanned %d/%d articles(%.1f")' %
-        (count + 1, len(main_scan_list), common.get_elapsed_sec(scan_start_time)), False)
+    log("Scanning finished in %.1f min.(%d/%d)" %
+        ((common.get_elapsed_sec(scan_start_time) / 60), count + 1, len(main_scan_list)), False)

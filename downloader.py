@@ -111,8 +111,7 @@ def wait_finish_downloading(temp_dir_path: str, log_path: str, loading_sec: floa
 
 def download(url: str, local_name: str):
     # Set the absolute path to store the downloaded file.
-    if not os.path.exists(common.Constants.DOWNLOAD_PATH):
-        os.makedirs(common.Constants.DOWNLOAD_PATH)  # create folder if it does not exist
+    common.check_dir_exists(common.Constants.DOWNLOAD_PATH)
 
     # Set the download target.
     r = requests.get(url, stream=True)

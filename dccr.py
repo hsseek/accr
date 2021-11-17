@@ -84,8 +84,7 @@ def scan_article(url: str):
 
     # A temporary folder to store the zip file.
     # The folder name can be anything, but use the article number to prevent duplicate names.
-    if not os.path.exists(Constants.TMP_DOWNLOAD_PATH):
-        os.makedirs(Constants.TMP_DOWNLOAD_PATH)
+    common.check_dir_exists(Constants.TMP_DOWNLOAD_PATH)
 
     # Load the article.
     start_time = datetime.now()
