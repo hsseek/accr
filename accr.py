@@ -13,6 +13,12 @@ class Constants:
     PROXY_DOMAINS = common.build_tuple_of_tuples('AC_PROXY_DOMAINS.pv')
     IGNORED_URLS = common.build_tuple('AC_IGNORED_URLS.pv')
 
+    TOO_YOUNG_DAY = 1
+    TOO_OLD_DAY = 3
+    SCANNING_SPAN = 10
+    STARTING_PAGE = 1
+    IS_START_POSTPONED = True
+
 
 def log(message: str, has_tst: bool = True):
     path = common.read_from_file('AC_LOG_PATH.pv')
@@ -27,7 +33,7 @@ def __get_local_name(article_title: str, url: str, likes: str):
     formatted_title = article_title.strip()
     for prohibited_char in common.Constants.PROHIBITED_CHARS:
         formatted_title = formatted_title.replace(prohibited_char, '_')
-    return formatted_likes + '-' + formatted_title + '-' + article_id + '-' + chan_id
+    return 'ac-' + chan_id + '-' + formatted_likes + '-' + formatted_title + '-' + article_id
 
 
 def get_article_soup(url: str) -> BeautifulSoup:
@@ -60,20 +66,19 @@ def scan_article(url: str):
     likes = soup.select_one('div.article-head > div.info-row > div.article-info > span.body').string
 
     local_name = __get_local_name(article_title_short, url, likes)
-    domain_tag = '-ac'
     body_css_selector = 'div.article-content '
 
     img_source_tags = soup.select(body_css_selector + 'img')
     if img_source_tags:  # Images present
         try:
-            downloader.iterate_source_tags(img_source_tags, local_name + domain_tag + '-i', url)
+            downloader.iterate_source_tags(img_source_tags, local_name + '-i', url)
         except Exception as img_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (img_source_exception, url, traceback.format_exc()))
 
     video_source_tags = soup.select(body_css_selector + 'video')
     if video_source_tags:  # Videos present
         try:
-            downloader.iterate_source_tags(video_source_tags, local_name + domain_tag + '-v', url)
+            downloader.iterate_source_tags(video_source_tags, local_name + '-v', url)
         except Exception as video_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
@@ -91,7 +96,7 @@ def scan_article(url: str):
                     external_link_tags.append(source)
     if external_link_tags:
         try:
-            downloader.iterate_source_tags(external_link_tags, local_name + domain_tag + '-a', url)
+            downloader.iterate_source_tags(external_link_tags, local_name + '-a', url)
         except Exception as video_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
@@ -121,10 +126,10 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                         continue  # Move to the next row
                     else:
                         day_diff = common.get_date_difference(tst_str)
-                        if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                        if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                             print('#%02d (%s) \t| Skipping the too young.' % (i + 1, likes))
                             continue  # Move to the next row
-                        elif day_diff >= TOO_OLD_DAY:  # Too old.
+                        elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
                             print('#%02d (%s) \t| Skipping the too old.' % (i + 1, likes))
                             # No need to scan older rows.
                             log('Page %d took %.2fs. Stop searching for older rows.\n' %
@@ -177,12 +182,9 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-TOO_YOUNG_DAY = 1
-TOO_OLD_DAY = 3
-SCANNING_SPAN = 10
-STARTING_PAGE = 1
-
-time.sleep(random.uniform(60, 3600))
-process_domain(Constants.NORMAL_DOMAINS, scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)
-time.sleep(random.uniform(30, 300))
-process_domain(Constants.PROXY_DOMAINS, scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)
+if Constants.IS_START_POSTPONED:
+    time.sleep(random.uniform(60, 3600))
+process_domain(Constants.NORMAL_DOMAINS, scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
+if Constants.IS_START_POSTPONED:
+    time.sleep(random.uniform(30, 300))
+process_domain(Constants.PROXY_DOMAINS, scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)

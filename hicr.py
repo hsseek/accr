@@ -138,7 +138,7 @@ def scan_article(url: str, tag_name: str = None):
         return False
 
     if download_successful:
-        log('Download finished successfully.(%s)' % time_report)
+        log('Download finished.(%s)' % time_report)
         __move_downloaded_file(tag_name)
         return True
     else:

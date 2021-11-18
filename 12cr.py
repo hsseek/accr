@@ -13,6 +13,13 @@ class Constants:
     ROOT_DOMAIN = common.build_tuple('12_DOMAINS.pv')
     IGNORED_URLS = common.build_tuple('12_IGNORED_URLS.pv')
 
+    TOO_YOUNG_DAY = 0
+    TOO_OLD_DAY = 2
+    SCANNING_SPAN = 5
+    STARTING_PAGE = 1
+
+    IS_START_POSTPONED = True
+
 
 def log(message: str, has_tst: bool = True):
     path = common.read_from_file('12_LOG_PATH.pv')
@@ -105,20 +112,20 @@ def scan_article(url: str):
     soup = BeautifulSoup(requests.get(url).text, common.Constants.HTML_PARSER)
     article_title = soup.select_one('div.view-wrap h1')['content']
     local_name = __get_local_name(article_title, url)
-    domain_tag = '-12'
+    domain_tag = '12'
     body_css_selector = 'div.view-content '
 
     img_source_tags = soup.select(body_css_selector + 'img')
     if img_source_tags:  # Images present
         try:
-            iterate_source_tags(img_source_tags, local_name + domain_tag + '-i', url)
+            iterate_source_tags(img_source_tags, '%s-%s-%s' % (domain_tag, local_name, 'i'), url)
         except Exception as img_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (img_source_exception, url, traceback.format_exc()))
 
     video_source_tags = soup.select(body_css_selector + 'video')
     if video_source_tags:  # Videos present
         try:
-            iterate_source_tags(video_source_tags, local_name + domain_tag + '-v', url)
+            iterate_source_tags(video_source_tags, '%s-%s-%s' % (domain_tag, local_name, 'v'), url)
         except Exception as video_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
@@ -135,7 +142,7 @@ def scan_article(url: str):
                     external_link_tags.append(source)
     if external_link_tags:
         try:
-            iterate_source_tags(external_link_tags, local_name + domain_tag + '-a', url)
+            iterate_source_tags(external_link_tags, '%s-%s-%s' % (domain_tag, local_name, 'a'), url)
         except Exception as video_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (video_source_exception, url, traceback.format_exc()))
 
@@ -155,10 +162,10 @@ def get_entries_to_scan(placeholder: str, scanning_span: int, page: int = 1) -> 
                 tst_str = row.select_one('div.wr-date').string
                 day_diff = __get_date_difference(tst_str)
                 if day_diff:
-                    if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                    if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                         log('#%02d | Skipping the too young.', False)
                         continue  # Move to the next row
-                    elif day_diff >= TOO_OLD_DAY:  # Too old.
+                    elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
                         # No need to scan older rows.
                         log('#%02d | Skipping the too old.' % (i + 1), False)
                         log('Page %d took %.2fs. Stop searching for older rows.\n'
@@ -192,8 +199,8 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
     try:
         for domain in domains:
             domain_start_time = datetime.now()
-            log('Looking up %s' % domain)
             page_index = '/bbs/board.php?bo_table=gal01&page='
+            log('Looking up %s' % domain + page_index)
             scan_list = get_entries_to_scan(domain + page_index, scanning_span, starting_page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
                 common.pause_briefly()
@@ -208,10 +215,6 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-TOO_YOUNG_DAY = 0
-TOO_OLD_DAY = 2
-SCANNING_SPAN = 5
-STARTING_PAGE = 1
-
-time.sleep(random.uniform(60, 3600))
-process_domain(Constants.ROOT_DOMAIN, scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)
+if Constants.IS_START_POSTPONED:
+    time.sleep(random.uniform(60, 3600))
+process_domain(Constants.ROOT_DOMAIN, scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)

@@ -28,6 +28,12 @@ class Constants:
     TMP_DOWNLOAD_PATH = common.read_from_file('DC_DOWNLOAD_PATH.pv')
     LOG_PATH = common.read_from_file('DC_LOG_PATH.pv')
 
+    TOO_YOUNG_DAY = 1
+    TOO_OLD_DAY = 3
+    SCANNING_SPAN = 30
+    STARTING_PAGE = 1
+    IS_START_POSTPONED = True
+
 
 def log(message: str, has_tst: bool = True):
     path = Constants.LOG_PATH
@@ -81,6 +87,7 @@ def mark_and_move(current_path: str, destination_path: str):
 
 def scan_article(url: str):
     log('\nProcessing %s' % url)
+    domain_tag = 'dc-'
 
     # A temporary folder to store the zip file.
     # The folder name can be anything, but use the article number to prevent duplicate names.
@@ -107,11 +114,12 @@ def scan_article(url: str):
         # Get the channel name
         channel_name = __get_chan_from_url(url)
         article_no = __get_no_from_url(url)
-        formatted_file_name = formatted_likes + '-' + formatted_title + '-' + article_no + '-' + channel_name
+        formatted_file_name = '%s-%s-%s-%s-%s' % \
+                              (domain_tag, channel_name, formatted_likes, formatted_title, article_no)
     except Exception as title_exception:
         log('Error: cannot process the article title.(%s)' % title_exception, has_tst=False)
         # Use the article number as the file name.
-        formatted_file_name = __get_no_from_url(url)
+        formatted_file_name = domain_tag + '-' + __get_no_from_url(url)
 
     download_successful = click_download_button(url, Constants.TMP_DOWNLOAD_PATH, loading_sec)
 
@@ -122,37 +130,35 @@ def scan_article(url: str):
             log('Error: Files left after download failure.')
         return  # Nothing to do.
 
-    __format_downloaded_file(formatted_file_name)
+    try:
+        __format_downloaded_file(formatted_file_name)
+    except Exception as post_download_exception:
+        log('Error: cannot process downloaded files.(%s)' % post_download_exception)
 
 
 # Process the downloaded file. (Mostly, a zip file or an image)
 def __format_downloaded_file(formatted_file_name):
-    try:
-        domain_tag = '-dc-'  # Note that it includes a tailing '-'.
+    # Unzip the downloaded file.
+    zip_files = glob(Constants.TMP_DOWNLOAD_PATH + '*.zip')
+    for zip_file_path in zip_files:
+        with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+            zip_ref.extractall(Constants.TMP_DOWNLOAD_PATH)
+        os.remove(zip_file_path)
 
-        # Unzip the downloaded file.
-        zip_files = glob(Constants.TMP_DOWNLOAD_PATH + '*.zip')
-        for zip_file_path in zip_files:
-            with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-                zip_ref.extractall(Constants.TMP_DOWNLOAD_PATH)
-            os.remove(zip_file_path)
+    # Convert webp files.
+    for file_name in os.listdir(Constants.TMP_DOWNLOAD_PATH):  # The file name might have been changed.
+        if file_name.endswith('.webp'):
+            common.convert_webp_to_png(Constants.TMP_DOWNLOAD_PATH, file_name)
 
-        # Convert webp files.
-        for file_name in os.listdir(Constants.TMP_DOWNLOAD_PATH):  # The file name might have been changed.
-            if file_name.endswith('.webp'):
-                common.convert_webp_to_png(Constants.TMP_DOWNLOAD_PATH, file_name)
-
-        # Rename files with long names.
-        destination_head = Constants.DESTINATION_PATH + formatted_file_name + domain_tag
-        char_limit = 40
-        for file_name in os.listdir(Constants.TMP_DOWNLOAD_PATH):
-            if len(file_name) > char_limit:
-                print('Truncated a long file name: %s' % file_name)
-                os.rename(Constants.TMP_DOWNLOAD_PATH + file_name, destination_head + file_name[-char_limit:])
-            else:
-                os.rename(Constants.TMP_DOWNLOAD_PATH + file_name, destination_head + file_name)
-    except Exception as post_download_exception:
-        log('Error: cannot process downloaded files.(%s)' % post_download_exception)
+    # Rename files with long names.
+    destination_head = Constants.DESTINATION_PATH + formatted_file_name
+    char_limit = 40
+    for file_name in os.listdir(Constants.TMP_DOWNLOAD_PATH):
+        if len(file_name) > char_limit:
+            print('Truncated a long file name: %s' % file_name)
+            os.rename(Constants.TMP_DOWNLOAD_PATH + file_name, destination_head + file_name[-char_limit:])
+        else:
+            os.rename(Constants.TMP_DOWNLOAD_PATH + file_name, destination_head + file_name)
 
 
 def check_auth(url):
@@ -267,10 +273,10 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                 tst_str = row.select_one('td.gall_date')['title'].split(' ')[0]  # 2021-09-19 23:47:42
                 day_diff = __get_date_difference(tst_str)
                 if day_diff:
-                    if day_diff <= TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+                    if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
                         print('#%02d (%s) \t| Skipping the too young.' % (i + 1, likes))
                         continue  # Move to the next row
-                    elif day_diff >= TOO_OLD_DAY:  # Too old.
+                    elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
                         print('#%02d (%s) \t| Skipping the too old.' % (i + 1, likes))
                         # No need to scan older rows.
                         log('Page %d took %.2fs. Stop searching for older rows.\n' %
@@ -323,15 +329,12 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-TOO_YOUNG_DAY = 1
-TOO_OLD_DAY = 3
-SCANNING_SPAN = 30
-STARTING_PAGE = 1
-
-time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
+if Constants.IS_START_POSTPONED:
+    time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
 for subdirectory, min_likes_str in Constants.SUBDIRECTORIES:
     browser = initiate_browser()
     try:
-        process_domain(subdirectory, min_likes=int(min_likes_str), scanning_span=SCANNING_SPAN, starting_page=STARTING_PAGE)
+        process_domain(subdirectory, min_likes=int(min_likes_str),
+                       scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
     finally:
         browser.quit()
