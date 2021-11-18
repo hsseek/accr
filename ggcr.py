@@ -29,12 +29,11 @@ class Constants:
     PAGE_PLACEHOLDER = ROOT_DOMAIN + '/index.php?mid=%s&page='
     BOARDS = common.build_tuple_of_tuples('GG_SUBDIRECTORIES.pv')
 
-    LOG_PATH = common.read_from_file('GG_LOG_PATH.pv')
-
     # Parsing and file processing
     HTML_PARSER = 'html.parser'
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'mp4', 'webp', 'webm')
     VIDEO_SOURCE_CANDIDATES = ('gfycat', 'redgifs')
+    LOG_PATH = common.read_from_file('GG_LOG_PATH.pv')
 
 
 def log(message: str, has_tst: bool = True):

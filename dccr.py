@@ -18,7 +18,14 @@ import downloader
 
 
 class Constants:
+    TOO_YOUNG_DAY = 1
+    TOO_OLD_DAY = 3
+    SCANNING_SPAN = 30
+    STARTING_PAGE = 1
+    IS_START_POSTPONED = True
+
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
+    TITLE_WHITELIST = common.build_tuple('DC_TITLE_WHITELIST.pv')
 
     ROOT_DOMAIN = common.read_from_file('DC_ROOT.pv')
     SUBDIRECTORIES = common.build_tuple_of_tuples('DC_SUBDIRECTORIES.pv')
@@ -27,12 +34,6 @@ class Constants:
     DESTINATION_PATH = common.Constants.DOWNLOAD_PATH
     TMP_DOWNLOAD_PATH = common.read_from_file('DC_DOWNLOAD_PATH.pv')
     LOG_PATH = common.read_from_file('DC_LOG_PATH.pv')
-
-    TOO_YOUNG_DAY = 1
-    TOO_OLD_DAY = 3
-    SCANNING_SPAN = 30
-    STARTING_PAGE = 1
-    IS_START_POSTPONED = True
 
 
 def log(message: str, has_tst: bool = True):
@@ -87,7 +88,7 @@ def mark_and_move(current_path: str, destination_path: str):
 
 def scan_article(url: str):
     log('\nProcessing %s' % url)
-    domain_tag = 'dc-'
+    domain_tag = 'dc'
 
     # A temporary folder to store the zip file.
     # The folder name can be anything, but use the article number to prevent duplicate names.
@@ -244,6 +245,51 @@ def __get_chan_from_url(url: str) -> str:
     return url.split('id=')[-1].split('&')[0]
 
 
+def qualify_row(row, row_no: int, min_likes: int, ignored_row_types: ()):
+    row_type_tag = row.select_one('td.gall_subject')
+    row_type = row_type_tag.string if row_type_tag else row.select_one('td.gall_num')
+    if not row_type_tag:
+        row.select_one('td.gall_num')
+    if row_type in ignored_row_types:  # Filter irregular rows.
+        return  # Skip the row.
+    likes = int(row.select_one('td.gall_recommend').string)
+
+    # 1. Filter by the date.
+    tst_str = row.select_one('td.gall_date')['title'].split(' ')[0]  # 2021-09-19 23:47:42
+    day_diff = __get_date_difference(tst_str)
+    if day_diff:
+        if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
+            print('#%02d (%s) \t| Skipping the too young.' % (row_no, likes))
+            return  # Move to the next row
+        elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
+            print('#%02d (%s) \t| Skipping the too old.' % (row_no, likes))
+            return False
+        # else, a matured article. Proceed.
+    else:  # An exception has been raised. Skip the row.
+        return
+
+    # 2. Filter by likes.
+    if likes < min_likes:
+        return
+
+    # 3. Filter by the title.
+    try:
+        title = row.select_one('td.gall_tit > a').text
+    except Exception as title_exception:
+        title = '%05d' % random.randint(1, 99999)
+        log('Error: cannot retrieve article title of row %d.(%s)' %
+            (row_no, title_exception))
+    # Check ignored patterns.
+    for pattern in common.Constants.IGNORED_TITLE_PATTERNS:
+        if pattern in title:
+            log('#%02d (%02d) | (ignored) %s' % (row_no, likes, title), False)
+            continue  # Ignored pattern detected. Skip the row.
+
+    article_no = __get_no_from_url(row.select_one('td.gall_tit > a')['href'])
+    log('#%02d (%02d) \t| %s' % (row_no, likes, title), False)
+    return article_no
+
+
 def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, page: int = 1) -> ():
     max_page = page + scanning_span - 1  # To prevent infinite looping
     to_scan = []
@@ -260,43 +306,16 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
 
         for i, row in enumerate(rows):  # Inspect the rows
             try:
-                row_type_tag = row.select_one('td.gall_subject')
-                row_type = row_type_tag.string if row_type_tag else row.select_one('td.gall_num')
-                if not row_type_tag:
-                    row.select_one('td.gall_num')
-                if row_type in ignored_row_types:  # Filter irregular rows.
-                    continue  # Skip the row.
-                likes = int(row.select_one('td.gall_recommend').string)
-                if likes < min_likes:
-                    continue  # Skip the row.
-
-                tst_str = row.select_one('td.gall_date')['title'].split(' ')[0]  # 2021-09-19 23:47:42
-                day_diff = __get_date_difference(tst_str)
-                if day_diff:
-                    if day_diff <= Constants.TOO_YOUNG_DAY:  # Still, not mature: uploaded on the yesterday.
-                        print('#%02d (%s) \t| Skipping the too young.' % (i + 1, likes))
-                        continue  # Move to the next row
-                    elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
-                        print('#%02d (%s) \t| Skipping the too old.' % (i + 1, likes))
-                        # No need to scan older rows.
-                        log('Page %d took %.2fs. Stop searching for older rows.\n' %
-                            (page, common.get_elapsed_sec(start_time)), False)
-                        return tuple(to_scan)
-                    else:  # Mature
-                        try:
-                            title = row.select_one('td.gall_tit > a').text
-                        except Exception as title_exception:
-                            title = '%05d' % random.randint(1, 99999)
-                            log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %
-                                (i + 1, title_exception, url))
-                        for pattern in common.Constants.IGNORED_TITLE_PATTERNS:
-                            if pattern in title:
-                                log('#%02d (%02d) | (ignored) %s' % (i + 1, likes, title), False)
-                                break
-                        else:
-                            article_no = __get_no_from_url(row.select_one('td.gall_tit > a')['href'])
-                            to_scan.append(article_no)
-                            log('#%02d (%02d) \t| %s' % (i + 1, likes, title), False)
+                article_no = qualify_row(row, i + 1, min_likes, ignored_row_types)
+                if article_no is None:
+                    continue
+                if article_no is False:
+                    log('Page %d took %.2fs. Stop searching for older rows.' %
+                        (page, common.get_elapsed_sec(start_time)), False)
+                    return to_scan
+                else:
+                    print('Article no: %s' % article_no)  # test
+                    to_scan.append(article_no)
             except Exception as row_exception:
                 log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
                 continue
