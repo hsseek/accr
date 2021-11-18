@@ -1,5 +1,3 @@
-import random
-import time
 import traceback
 from datetime import datetime
 
@@ -22,7 +20,6 @@ class Constants:
     TOO_OLD_DATE = 3
     SCANNING_SPAN = 15
     STARTING_PAGE = 1
-    IS_START_POSTPONED = True
 
     # urls and paths in String
     ROOT_DOMAIN = common.read_from_file('GG_ROOT_DOMAIN.pv')
@@ -114,6 +111,7 @@ def get_entries_to_scan(placeholder: str, extensions: (), min_likes: int, scanni
                         log('#%02d (%s) %s \t| %s' % (i + 1, likes, cate, title))
 
         log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)))
+        common.pause_briefly()
         page += 1
     return tuple(to_scan)
 
@@ -277,8 +275,6 @@ def iterate_video_source_tags(source_tags, file_name) -> bool:
     return has_source
 
 
-if Constants.IS_START_POSTPONED:
-    time.sleep(random.uniform(120, 3600))
 browser = initiate_browser()
 try:
     for board_name, board_min_likes, extension_str in Constants.BOARDS:
@@ -288,6 +284,7 @@ try:
         scan_list = get_entries_to_scan(board, target_extensions, int(board_min_likes),
                                         Constants.SCANNING_SPAN, Constants.STARTING_PAGE)
         for article_no in scan_list:
+            common.pause_briefly()
             article_url = Constants.ROOT_DOMAIN + board_name + article_no
             scan_article(article_url)
         log('Finished scanning %s in %d min.\n' %

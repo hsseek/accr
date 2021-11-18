@@ -17,7 +17,6 @@ class Constants:
     TOO_OLD_DAY = 3
     SCANNING_SPAN = 10
     STARTING_PAGE = 1
-    IS_START_POSTPONED = True
 
 
 def log(message: str, has_tst: bool = True):
@@ -154,7 +153,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                 log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
                 continue
         log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)), False)
-        time.sleep(random.uniform(0.5, 2.5))
+        common.pause_briefly()
         page += 1
     return tuple(to_scan)
 
@@ -170,7 +169,6 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
             scan_list = get_entries_to_scan(url + page_index, min_likes, scanning_span, starting_page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
                 common.pause_briefly()
-
                 article_url = url + str(article_no)
                 scan_start_time = datetime.now()
                 scan_article(article_url)
@@ -182,9 +180,6 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-if Constants.IS_START_POSTPONED:
-    time.sleep(random.uniform(60, 3600))
 process_domain(Constants.NORMAL_DOMAINS, scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
-if Constants.IS_START_POSTPONED:
-    time.sleep(random.uniform(30, 300))
+time.sleep(random.uniform(10, 120))
 process_domain(Constants.PROXY_DOMAINS, scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)

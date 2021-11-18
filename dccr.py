@@ -9,7 +9,6 @@ from selenium.webdriver.common.by import By
 
 import common
 import random
-import time
 import traceback
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -22,7 +21,6 @@ class Constants:
     TOO_OLD_DAY = 3
     SCANNING_SPAN = 30
     STARTING_PAGE = 1
-    IS_START_POSTPONED = True
 
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
     TITLE_WHITELIST = common.build_tuple('DC_TITLE_WHITELIST.pv')
@@ -356,7 +354,6 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
         scan_list = get_entries_to_scan(gall, min_likes, scanning_span, starting_page, excluding)
         for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
             common.pause_briefly()
-
             article_url = gall.replace('lists', 'view').replace('page', 'no').replace('%d', str(article_no))
             scan_start_time = datetime.now()
             scan_article(article_url)
@@ -366,9 +363,6 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
-
-if Constants.IS_START_POSTPONED:
-    time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
 
 browser = initiate_browser()
 try:

@@ -19,7 +19,6 @@ class Constants:
     TOO_OLD_DAY = 3
     SCANNING_SPAN = 2
     STARTING_PAGE = 1
-    IS_START_POSTPONED = True
 
     ROOT_DOMAIN = common.read_from_file('HI_ROOT.pv')
     SUBDIRECTORIES = common.build_tuple_of_tuples('HI_SUBDIRECTORIES.pv')
@@ -307,7 +306,7 @@ def append_articles_to_scan(scan_list: [], placeholder: str, domain_tag, scannin
 
                         # Finally, check duplicates
                         for info in scan_list:
-                            if url.split('/')[-1] in info[0]:
+                            if url.split('-')[-1] in info[0]:
                                 log('#%02d | (Duplicate) %s' % (i + 1, article_title), False)
                                 break
                         else:  # No duplicates
@@ -342,8 +341,6 @@ def process_domain(scan_list: [], placeholder: str, domain_tag: str, scanning_sp
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-if Constants.IS_START_POSTPONED:
-    time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
 main_scan_list = []
 for subdirectory, directory_tag in Constants.SUBDIRECTORIES:
     browser = initiate_browser()
@@ -358,8 +355,6 @@ for subdirectory, directory_tag in Constants.SUBDIRECTORIES:
 log('%d articles to scan.' % len(main_scan_list), False)
 for n, article_info in enumerate(main_scan_list):
     common.pause_briefly()
-
-    # Start scanning the article
     scan_start_time = datetime.now()
     for j in range(3):  # If the scan is not successful, just try it again. Interception is whimsical.
         is_article_scan_successful = scan_article(url=article_info[0], tag_name=article_info[1])

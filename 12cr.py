@@ -1,7 +1,6 @@
 import downloader
 import common
 import random
-import time
 import traceback
 from datetime import datetime
 import requests
@@ -17,8 +16,6 @@ class Constants:
     TOO_OLD_DAY = 2
     SCANNING_SPAN = 5
     STARTING_PAGE = 1
-
-    IS_START_POSTPONED = True
 
 
 def log(message: str, has_tst: bool = True):
@@ -204,7 +201,6 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
             scan_list = get_entries_to_scan(domain + page_index, scanning_span, starting_page)
             for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
                 common.pause_briefly()
-
                 article_url = domain + '/bbs/board.php?bo_table=gal01&wr_id=' + str(article_no)
                 scan_start_time = datetime.now()
                 scan_article(article_url)
@@ -215,6 +211,4 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-if Constants.IS_START_POSTPONED:
-    time.sleep(random.uniform(60, 3600))
 process_domain(Constants.ROOT_DOMAIN, scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
