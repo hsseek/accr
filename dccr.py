@@ -313,7 +313,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
 
 def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page: int = 1):
     try:
-        domain_start_time = datetime.now()
+        gall_start_time = datetime.now()
         log('Looking up %s' % gall)
         scan_list = get_entries_to_scan(gall, min_likes, scanning_span, starting_page)
         for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
@@ -324,7 +324,7 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
             scan_article(article_url)
             log('Scanned %d/%d articles(%.1f")' %
                 (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)), False)
-        log('Finished scanning %s in %d min.\n' % (gall, int(common.get_elapsed_sec(domain_start_time) / 60)), False)
+        log('Finished scanning %s in %d min.\n' % (gall, int(common.get_elapsed_sec(gall_start_time) / 60)), False)
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
