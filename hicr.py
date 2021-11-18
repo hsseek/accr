@@ -82,7 +82,7 @@ def mark_and_move(current_path: str, destination_path: str):
         os.rename(current_path + file, destination_path + 'err-' + file)
 
 
-def try_access_page(driver: webdriver.Chrome, url: str, trial: int = 3):
+def try_access_page(driver: webdriver.Chrome, url: str, trial: int = 2):
     for i in range(trial):
         try:
             driver.get(url)
@@ -161,11 +161,15 @@ def __move_downloaded_file(tag_name: str):
                     .strip('_').split('_')[-1].strip()
                 for prohibited_char in common.Constants.PROHIBITED_CHARS:
                     dir_name = dir_name.replace(prohibited_char, '_')
-                if tag_name:
-                    dir_name = tag_name + '-' + dir_name
-                # Add the file count at the head.
+
+                # Add the file count.
                 file_count = len(zip_ref.namelist())
                 dir_name = '%03d-' % file_count + dir_name
+
+                # Add the tag name at the head.
+                if tag_name:
+                    dir_name = tag_name + '-' + dir_name
+
                 # Extract all to the composed destination path.
                 destination = Constants.DESTINATION_PATH + dir_name + '/'
                 zip_ref.extractall(destination)
@@ -255,15 +259,16 @@ def click_download_button(dl_browser: webdriver.Chrome, loading_sec: float) -> b
 def append_articles_to_scan(scan_list: [], placeholder: str, domain_tag, scanning_span: int, page: int = 1) -> []:
     max_page = page + scanning_span - 1  # To prevent infinite looping
     consecutive_failures = 0
-    MAX_FAILURE = 5
+    MAX_FAILURE = 3
 
-    while page <= max_page or consecutive_failures >= MAX_FAILURE:  # Page-wise
+    while page <= max_page and consecutive_failures < MAX_FAILURE:  # Page-wise
         start_time = datetime.now()  # A timer for monitoring performance
         url = placeholder + str(page)
 
         is_on_page = try_access_page(browser, url)
         if not is_on_page:
             consecutive_failures += 1
+            page += 1
             # Tried, but didn't reach. Move on to the next page.
             break
 
@@ -278,7 +283,8 @@ def append_articles_to_scan(scan_list: [], placeholder: str, domain_tag, scannin
         else:
             consecutive_failures += 1
             log('Error: Cannot load page %d. Move to the next page.' % page)
-            break  # Move on to the next page.
+            page += 1
+            continue  # Move on to the next page.
 
         for i, row in enumerate(rows):  # Inspect the rows
             try:
@@ -321,6 +327,8 @@ def append_articles_to_scan(scan_list: [], placeholder: str, domain_tag, scannin
         consecutive_failures = 0  # Reset the consecutive failure count.
         common.pause_briefly()
         page += 1
+    else:
+        log('Consecutive %d failures of loading the page. Aborting scanning the subdirectory.' % MAX_FAILURE)
 
 
 def process_domain(scan_list: [], placeholder: str, domain_tag: str, scanning_span: int, starting_page: int = 1):
