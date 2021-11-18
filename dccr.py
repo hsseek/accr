@@ -29,6 +29,7 @@ class Constants:
 
     ROOT_DOMAIN = common.read_from_file('DC_ROOT.pv')
     SUBDIRECTORIES = common.build_tuple_of_tuples('DC_SUBDIRECTORIES.pv')
+    SUBDIRECTORIES_CHAOTIC = common.build_tuple_of_tuples('DC_SUBDIRECTORIES_LARGE.pv')
     ACCOUNT, PASSWORD = common.build_tuple('DC_ACCOUNT.pv')
 
     DESTINATION_PATH = common.Constants.DOWNLOAD_PATH
@@ -245,13 +246,15 @@ def __get_chan_from_url(url: str) -> str:
     return url.split('id=')[-1].split('&')[0]
 
 
-def qualify_row(row, row_no: int, min_likes: int, ignored_row_types: ()):
+def qualify_row(row, row_no: int, min_likes: int, ignored_row_types: (), excluding: bool):
     row_type_tag = row.select_one('td.gall_subject')
-    row_type = row_type_tag.string if row_type_tag else row.select_one('td.gall_num')
-    if not row_type_tag:
-        row.select_one('td.gall_num')
-    if row_type in ignored_row_types:  # Filter irregular rows.
-        return  # Skip the row.
+    if row_type_tag:  # (214, 설문), (23124, 방송), (23125, 코스프), ...
+        if row_type_tag.string in ignored_row_types:
+            return   # Skip the row.
+    else:  # 설문, 공지, 21231, 21232, ...
+        article_no = str(row.select_one('td.gall_num').string)
+        if not article_no.isdigit():
+            return  # Skip the row.
     likes = int(row.select_one('td.gall_recommend').string)
 
     # 1. Filter by the date.
@@ -268,29 +271,45 @@ def qualify_row(row, row_no: int, min_likes: int, ignored_row_types: ()):
     else:  # An exception has been raised. Skip the row.
         return
 
-    # 2. Filter by likes.
-    if likes < min_likes:
-        return
-
-    # 3. Filter by the title.
+    # 2. Filter by the title.
+    # Retrieve the title.
     try:
         title = row.select_one('td.gall_tit > a').text
     except Exception as title_exception:
         title = '%05d' % random.randint(1, 99999)
         log('Error: cannot retrieve article title of row %d.(%s)' %
             (row_no, title_exception))
-    # Check ignored patterns.
-    for pattern in common.Constants.IGNORED_TITLE_PATTERNS:
-        if pattern in title:
-            log('#%02d (%02d) | (ignored) %s' % (row_no, likes, title), False)
-            continue  # Ignored pattern detected. Skip the row.
 
-    article_no = __get_no_from_url(row.select_one('td.gall_tit > a')['href'])
+    if not excluding:  # Regular subdirectories
+        # Check ignored patterns.
+        for pattern in common.Constants.IGNORED_TITLE_PATTERNS:
+            if pattern in title:
+                log('#%02d (%02d) | (ignored) %s' % (row_no, likes, title), False)
+                return  # Ignored pattern detected. Skip the row.
+
+        # 3. Filter by likes.
+        if likes < min_likes:
+            return
+    else:  # Worth-scanning only if white-listed or with very large likes
+        for whitelist_pattern in Constants.TITLE_WHITELIST:
+            if whitelist_pattern in title:
+                break
+        else:  # Not white-listed
+            if likes < min_likes:
+                return
+
+    try:
+        article_no = row['data-no']
+    except Exception as row_link_exception:
+        log('Warning: Cannot retrieve article number. Try extracting from url.(%s)' % row_link_exception)
+        article_no = __get_no_from_url(row.select_one('td.gall_tit > a')['href'])
+    print('URL: %s' % article_no)
     log('#%02d (%02d) \t| %s' % (row_no, likes, title), False)
     return article_no
 
 
-def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, page: int = 1) -> ():
+def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int,
+                        page: int = 1, excluding: bool = False) -> ():
     max_page = page + scanning_span - 1  # To prevent infinite looping
     to_scan = []
     ignored_row_types = ('공지', '설문')
@@ -306,16 +325,16 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
 
         for i, row in enumerate(rows):  # Inspect the rows
             try:
-                article_no = qualify_row(row, i + 1, min_likes, ignored_row_types)
-                if article_no is None:
+                article_no = qualify_row(row, i + 1, min_likes, ignored_row_types, excluding)
+                if article_no is None:  # Unqualified. Skip the row.
                     continue
-                if article_no is False:
+                if article_no is False:  # Date limit reached. No need of further investigation.
                     log('Page %d took %.2fs. Stop searching for older rows.' %
                         (page, common.get_elapsed_sec(start_time)), False)
                     return to_scan
-                else:
-                    print('Article no: %s' % article_no)  # test
+                else:  # A qualified row, append to the scanning list.
                     to_scan.append(article_no)
+
             except Exception as row_exception:
                 log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
                 continue
@@ -330,11 +349,11 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
     return tuple(to_scan)
 
 
-def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page: int = 1):
+def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page: int = 1, excluding: bool = False):
     try:
         gall_start_time = datetime.now()
         log('Looking up %s' % gall)
-        scan_list = get_entries_to_scan(gall, min_likes, scanning_span, starting_page)
+        scan_list = get_entries_to_scan(gall, min_likes, scanning_span, starting_page, excluding)
         for i, article_no in enumerate(scan_list):  # [32113, 39213, 123412, ...]
             common.pause_briefly()
 
@@ -350,10 +369,14 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
 
 if Constants.IS_START_POSTPONED:
     time.sleep(random.uniform(60, 3600))  # Sleep minutes to randomize the starting time.
-for subdirectory, min_likes_str in Constants.SUBDIRECTORIES:
-    browser = initiate_browser()
-    try:
+
+browser = initiate_browser()
+try:
+    for subdirectory, min_likes_str in Constants.SUBDIRECTORIES:
         process_domain(subdirectory, min_likes=int(min_likes_str),
                        scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
-    finally:
-        browser.quit()
+    for subdirectory, min_likes_str in Constants.SUBDIRECTORIES_CHAOTIC:
+        process_domain(subdirectory, min_likes=int(min_likes_str),
+                       scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE, excluding=True)
+finally:
+    browser.quit()
