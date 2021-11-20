@@ -301,7 +301,6 @@ def qualify_row(row, row_no: int, min_likes: int, ignored_row_types: (), excludi
     except Exception as row_link_exception:
         log('Warning: Cannot retrieve article number. Try extracting from url.(%s)' % row_link_exception)
         article_no = __get_no_from_url(row.select_one('td.gall_tit > a')['href'])
-    print('URL: %s' % article_no)
     log('#%02d (%02d) \t| %s' % (row_no, likes, title), False)
     return article_no
 

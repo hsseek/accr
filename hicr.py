@@ -213,7 +213,8 @@ def wait_for_download_start(dl_browser: webdriver.Chrome, loading_sec: float):
                 consecutive_failures = 0
             else:
                 if consecutive_failures < 10:
-                    print('Download script progress %.1f ' % progress + '%\t' + '(%d/%d)\t(STALLED)' % (seconds, timeout))
+                    print('Download script progress %.1f ' % progress + '%\t' +
+                          '(%d/%d)\t(STALLED)' % (seconds, timeout))
                     consecutive_failures += 1
                 else:  # i.e., 10 consecutive failures.
                     log('Warning: Download progress stopped.')
@@ -296,7 +297,7 @@ def append_articles_to_scan(scan_list: [], placeholder: str, domain_tag, scannin
                     elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
                         print('#%02d | Skipping the too old.' % (i + 1))
                         # No need to scan older rows.
-                        log('Page %d took %.2fs. Stop searching for older rows.\n' %
+                        log('Page %d took %.2fs. Stop searching for older rows.' %
                             (page, common.get_elapsed_sec(start_time)), False)
                         return
                     else:
@@ -336,7 +337,7 @@ def process_domain(scan_list: [], placeholder: str, domain_tag: str, scanning_sp
         log('Looking up %s' % placeholder.split('?')[0])
         append_articles_to_scan(scan_list, placeholder, domain_tag, scanning_span, starting_page)
         log('Finished processing %s in %d".\n' %
-            (placeholder, int(common.get_elapsed_sec(domain_start_time))), False)
+            (placeholder.split('?')[0], int(common.get_elapsed_sec(domain_start_time))), False)
     except Exception as normal_domain_exception:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
