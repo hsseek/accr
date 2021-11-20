@@ -6,6 +6,8 @@ import selenium.common.exceptions
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support.wait import WebDriverWait
 
 import common
 import random
@@ -65,11 +67,23 @@ def initiate_browser():
 
 
 def login(driver: webdriver.Chrome, current_url: str):
+    timeout = 60
     driver.get(Constants.ROOT_DOMAIN)
     driver.find_element(By.NAME, 'user_id').send_keys(Constants.ACCOUNT)
     driver.find_element(By.NAME, 'pw').send_keys(Constants.PASSWORD)
     driver.find_element(By.ID, 'login_ok').click()
-    driver.get(current_url)
+    driver_wait = WebDriverWait(driver, timeout)
+    try:
+        driver_wait.until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, 'logout')))
+        driver.get(current_url)
+        return True  # Page body visible
+    except selenium.common.exceptions.TimeoutException:
+        return False
+    except selenium.common.exceptions.NoSuchElementException:
+        return False
+    except Exception as auth_exception:
+        log('Error: login failed.(%s)' % auth_exception)
+        return False
 
 
 def element_exists_by_class(driver: webdriver.Chrome, class_name: str) -> bool:
@@ -168,10 +182,10 @@ def check_auth(url):
         return True  # Good to go.
     else:
         for i in range(2):
-            log('Login required to view the article.')
+            log('Login required to access the article.')
             try:
-                login(browser, url)
-                if not element_exists_by_class(browser, certify_class_name):
+                is_logged_in = login(browser, url)
+                if is_logged_in and not element_exists_by_class(browser, certify_class_name):
                     log('Login successful.')
                     return True  # Good to go.
             except Exception as login_exception:
@@ -326,7 +340,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int,
                 if article_no is None:  # Unqualified. Skip the row.
                     continue
                 if article_no is False:  # Date limit reached. No need of further investigation.
-                    log('Page %d took %.2fs. Stop searching for older rows.' %
+                    log('Page %d took %.1f". Stop searching for older rows.' %
                         (page, common.get_elapsed_sec(start_time)), False)
                     return to_scan
                 else:  # A qualified row, append to the scanning list.
@@ -340,7 +354,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int,
             return tuple(to_scan)
         else:
             prev_url = browser.current_url  # Store the url for the next comparison.
-        log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)), False)
+        log('Page %d took %.1f".' % (page, common.get_elapsed_sec(start_time)), False)
         common.pause_briefly(1, 4)
         page += 1
     return tuple(to_scan)
@@ -365,11 +379,11 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
 
 browser = initiate_browser()
 try:
-    for subdirectory, min_likes_str in Constants.SUBDIRECTORIES:
-        process_domain(subdirectory, min_likes=int(min_likes_str),
-                       scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
     for subdirectory, min_likes_str in Constants.SUBDIRECTORIES_CHAOTIC:
         process_domain(subdirectory, min_likes=int(min_likes_str),
                        scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE, excluding=True)
+    for subdirectory, min_likes_str in Constants.SUBDIRECTORIES:
+        process_domain(subdirectory, min_likes=int(min_likes_str),
+                       scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
 finally:
     browser.quit()

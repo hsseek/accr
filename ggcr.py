@@ -18,13 +18,14 @@ class Constants:
     # Scanning variables
     TOO_YOUNG_DATE = 1
     TOO_OLD_DATE = 3
-    SCANNING_SPAN = 15
+    SCANNING_SPAN = 8
     STARTING_PAGE = 1
 
     # urls and paths in String
     ROOT_DOMAIN = common.read_from_file('GG_ROOT_DOMAIN.pv')
     PAGE_PLACEHOLDER = ROOT_DOMAIN + '/index.php?mid=%s&page='
     BOARDS = common.build_tuple_of_tuples('GG_SUBDIRECTORIES.pv')
+    ACCOUNT, PASSWORD = common.build_tuple('GG_ACCOUNT.pv')
 
     # Parsing and file processing
     HTML_PARSER = 'html.parser'
@@ -91,7 +92,7 @@ def get_entries_to_scan(placeholder: str, extensions: (), min_likes: int, scanni
                     elif day_diff >= Constants.TOO_OLD_DATE:  # Too old.
                         # No need to scan older rows.
                         log('#%02d\t\t| Skipping the too old.' % (i + 1))
-                        log('Page %d took %.2fs. Stop searching for older rows.\n' %
+                        log('Page %d took %.1f". Stop searching for older rows.\n' %
                             (page, common.get_elapsed_sec(start_time)), has_tst=False)
                         return tuple(to_scan)
 
@@ -110,7 +111,7 @@ def get_entries_to_scan(placeholder: str, extensions: (), min_likes: int, scanni
                         to_scan.append(row.select_one('td.title > a.hx')['href'].split('srl=')[-1])
                         log('#%02d (%s) %s \t| %s' % (i + 1, likes, cate, title))
 
-        log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)))
+        log('Page %d took %.1f".' % (page, common.get_elapsed_sec(start_time)))
         common.pause_briefly()
         page += 1
     return tuple(to_scan)
@@ -275,12 +276,41 @@ def iterate_video_source_tags(source_tags, file_name) -> bool:
     return has_source
 
 
+def check_auth(driver: webdriver.Chrome, url: str):
+    timeout = 60
+    driver.get(url)
+    soup = BeautifulSoup(driver.page_source, common.Constants.HTML_PARSER)
+    if soup.select_one('div.login-header'):  # Login required
+        driver.find_element(By.ID, 'L_user_id').send_keys(Constants.ACCOUNT)
+        driver.find_element(By.ID, 'L_password').send_keys(Constants.PASSWORD)
+        driver.find_element(By.XPATH, '/html/body/div[1]/div[3]/div/form/span[4]').click()
+        driver_wait = WebDriverWait(driver, timeout)
+        try:
+            driver_wait.until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, 'bd_lst_wrp')))
+            return True  # Page body visible
+        except selenium.common.exceptions.TimeoutException:
+            return False
+        except selenium.common.exceptions.NoSuchElementException:
+            return False
+        except Exception as auth_exception:
+            log('Error: login failed.(%s)' % auth_exception)
+            return False
+    else:  # Logged in
+        return True
+
+
 browser = initiate_browser()
 try:
     for board_name, board_min_likes, extension_str in Constants.BOARDS:
-        board_start_time = datetime.now()
-        target_extensions = tuple(extension_str.split('-'))
         board = Constants.PAGE_PLACEHOLDER.replace('%s', board_name.strip('/'))
+        for trial in range(2):
+            is_auth = check_auth(browser, board)
+            if is_auth:
+                break  # No (further) authentication required. Good to go.
+        else:
+            break  # Cannot retrieve authentication. Nothing to do.
+        target_extensions = tuple(extension_str.split('-'))
+        board_start_time = datetime.now()
         scan_list = get_entries_to_scan(board, target_extensions, int(board_min_likes),
                                         Constants.SCANNING_SPAN, Constants.STARTING_PAGE)
         for article_no in scan_list:

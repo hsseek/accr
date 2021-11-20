@@ -131,7 +131,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                         elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
                             print('#%02d (%s) \t| Skipping the too old.' % (i + 1, likes))
                             # No need to scan older rows.
-                            log('Page %d took %.2fs. Stop searching for older rows.\n' %
+                            log('Page %d took %.1f". Stop searching for older rows.\n' %
                                 (page, common.get_elapsed_sec(start_time)), False)
                             return tuple(to_scan)
                         else:  # Mature
@@ -152,7 +152,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
             except Exception as row_exception:
                 log('Error: cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
                 continue
-        log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time)), False)
+        log('Page %d took %.1f".' % (page, common.get_elapsed_sec(start_time)), False)
         common.pause_briefly()
         page += 1
     return tuple(to_scan)
