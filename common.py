@@ -21,7 +21,7 @@ def log(message: str, path: str, has_tst: bool = True):
 
 def pause_briefly(min_pause=2, max_pause=6):
     pause = random.uniform(min_pause, max_pause)
-    print('Pause for %.1f.' % pause)
+    print('Pause for %.1f".' % pause)
     time.sleep(pause)
 
 

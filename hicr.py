@@ -297,7 +297,7 @@ def append_articles_to_scan(scan_list: [], placeholder: str, domain_tag, scannin
                     elif day_diff >= Constants.TOO_OLD_DAY:  # Too old.
                         print('#%02d | Skipping the too old.' % (i + 1))
                         # No need to scan older rows.
-                        log('Page %d took %.2fs. Stop searching for older rows.' %
+                        log('Page %d took %.1f". Stop searching for older rows.' %
                             (page, common.get_elapsed_sec(start_time)), False)
                         return
                     else:
@@ -323,12 +323,13 @@ def append_articles_to_scan(scan_list: [], placeholder: str, domain_tag, scannin
                 log('Error: Cannot process row %d from %s.(%s)' % (i + 1, url, row_exception))
                 continue
 
-        log('Page %d took %.2fs.' % (page, common.get_elapsed_sec(start_time),), False)
+        log('Page %d took %.1f".' % (page, common.get_elapsed_sec(start_time),), False)
         consecutive_failures = 0  # Reset the consecutive failure count.
         common.pause_briefly()
         page += 1
-    else:
-        log('Consecutive %d failures of loading the page. Aborting scanning the subdirectory.' % MAX_FAILURE)
+    else:  # Now at (max_page + 1) page or (consecutive_failures == MAX_FAILURES)
+        if consecutive_failures >= MAX_FAILURE:
+            log('Consecutive %d failures of loading the page. Aborting scanning the subdirectory.' % MAX_FAILURE)
 
 
 def process_domain(scan_list: [], placeholder: str, domain_tag: str, scanning_span: int, starting_page: int = 1):
