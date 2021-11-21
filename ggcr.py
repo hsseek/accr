@@ -64,7 +64,6 @@ def get_entries_to_scan(placeholder: str, extensions: (), min_likes: int, scanni
     max_page = page + scanning_span - 1  # To prevent infinite looping
     log('Scanning pages on %s' % placeholder + str(page))
     tst_attribute = 'title'
-    prev_row_date = None
     to_scan = []
 
     while page <= max_page:  # Page-wise
@@ -79,9 +78,6 @@ def get_entries_to_scan(placeholder: str, extensions: (), min_likes: int, scanni
                 continue
             else:  # Not a notice, a regular row. Determine if worth scanning.
                 if ':' not in tst_tag[tst_attribute]:  # Not mature: less than 24 hours.
-                    continue  # Move to the next row
-                elif prev_row_date is None:  # Not mature: uploaded on the yesterday for sure.
-                    prev_row_date = tst_tag.string  # Just update for the next comparison loop.
                     continue  # Move to the next row
                 else:
                     row_date = tst_tag.string
@@ -129,15 +125,26 @@ def scan_article(url: str):
         log('Error: cannot retrieve the title %s' % url)
         article_title = url.split('/')[-1]
 
-    log('Processing %s <%s>' % (url, article_title,))
-
+    log('Processing %s' % url)
+    article_start_time = datetime.now()
     # Retrieve likes.
-    likes_tag = soup.select_one('div.btm_area > div.fr > span:nth-child(2) > b')
-    if likes_tag:
-        likes = likes_tag.string
-    else:
+    try:
+        likes_tag = soup.select('div.btm_area > div.fr > span')[-3]
+        likes = likes_tag.next.next.string
+    except Exception as likes_exception:
         likes = '0'
-        log('Error: Cannot retrieve likes from %s' % url)
+        log('Error: Cannot retrieve likes from %s.(%s)' % (url, likes_exception), False)
+
+    local_name = __get_local_name(article_title, url, likes)
+
+    # Retrieve cate for determining scanning targets.
+    cate_tag = soup.select_one('strong.cate')
+    if cate_tag:
+        cate = cate_tag.string
+    else:
+        log('Error: Cannot retrieve cate.(%s)' % url, False)
+        cate = 'err'
+    log('(%s) %s <%s>' % (likes, cate, article_title), False)
 
     # For images
     img_source_tags = soup.select('div#article_1 > div img')
@@ -145,52 +152,56 @@ def scan_article(url: str):
     if img_source_tags:
         # Retrieve the file name.
         try:
-            local_name = __get_local_name(article_title, url, likes)
             found_img_source = iterate_img_source_tags(img_source_tags, local_name + img_filename_tag)
             if not found_img_source:
                 log('Error: <img> tag present, but no source found.\n(%s)' % url)
         except Exception as img_source_err:
             log('Error: %s\n%s\n[Traceback]\n%s' % (img_source_err, url, traceback.format_exc()))
 
-    # For videos
-    cate_tag = soup.select_one('strong.cate')
-    video_filename_tag = '-v'
-    if cate_tag and (cate_tag.string == 'avi' or cate_tag.string == 'jpgif'):
+    # Video scanning takes longer time because it takes time to determine
+    # whether the video wrapper has not been loaded yet or
+    # not present in the first place.
+    if cate not in ('jpg', '사진'):  # Don't even try if the article is not likely to contain videos.
+        video_wrapper_timeout = 30
+        video_filename_tag = '-v'
+        is_video_expected = cate == 'avi'
         try:
-            WebDriverWait(browser, 12).until(
+            WebDriverWait(browser, video_wrapper_timeout).until(
                 expected_conditions.visibility_of_all_elements_located((By.CLASS_NAME, 'gfycatWrap')))
             video_source_tags = soup.select('iframe')
             if video_source_tags:
-                local_name = __get_local_name(article_title, url, likes)
                 found_video_source = iterate_video_source_tags(video_source_tags, local_name + video_filename_tag)
-                if not found_video_source:
+                if is_video_expected and not found_video_source:
                     log('Error: <video> tag present, but no source found.\n(%s)' % url)
         except selenium.common.exceptions.TimeoutException:
-            # Usual gfycatWrap not present: check unusual sources present.
-            if soup.select('video'):
-                video_source_tags = soup.select('video')
-                local_name = __get_local_name(article_title, url, likes)
-                found_video_source = iterate_video_source_tags(video_source_tags, local_name + video_filename_tag)
-                if not found_video_source:
-                    log('Error: <video> tag present, but no source found.\n(%s)' % url)
-            elif soup.select('iframe'):
-                iframe_source_tags = soup.select('iframe')
-                # Remove ad sources
-                source_attr = 'src'
-                ad_source = 'ad.linkprice'
-                source_tags_no_ads = []
-                for tag in iframe_source_tags:
-                    if not (tag.has_attr(source_attr) and ad_source in tag[source_attr]):
-                        source_tags_no_ads.append(tag)
-                local_name = __get_local_name(article_title, url, likes)
-                if source_tags_no_ads:
-                    found_video_source = iterate_video_source_tags(source_tags_no_ads, local_name + video_filename_tag)
-                    if not found_video_source:
-                        log('Error: <video> tag present, but no source found.\n(%s)' % url)
-            else:
-                log('Video player not found.\n(%s).' % url)
+            pass
+        except selenium.common.exceptions.NoSuchElementException:
+            pass
         except Exception as video_source_err:
             log('Error: %s\n(%s)\n[Traceback]\n%s' % (video_source_err, url, traceback.format_exc()))
+
+        # Usual gfycatWrap not present: check unusual sources present.
+        if soup.select('video'):
+            video_source_tags = soup.select('video')
+            found_video_source = iterate_video_source_tags(video_source_tags, local_name + video_filename_tag)
+            if is_video_expected and not found_video_source:
+                log('Error: <video> tag present, but no source found.\n(%s)' % url)
+        elif soup.select('iframe'):
+            iframe_source_tags = soup.select('iframe')
+            # Remove ad sources
+            source_attr = 'src'
+            ad_source = 'ad.linkprice'
+            source_tags_no_ads = []
+            for tag in iframe_source_tags:
+                if not (tag.has_attr(source_attr) and ad_source in tag[source_attr]):
+                    source_tags_no_ads.append(tag)
+            if source_tags_no_ads:
+                found_video_source = iterate_video_source_tags(source_tags_no_ads, local_name + video_filename_tag)
+                if is_video_expected and not found_video_source:
+                    log('Error: <video> tag present, but no source found.\n(%s)' % url)
+        else:
+            log('Video player not found.\n(%s).' % url)
+    log('Finished scanning article in %.1f".\n' % common.get_elapsed_sec(article_start_time), False)
 
 
 def __get_local_name(article_title: str, url: str, likes: str):
@@ -319,7 +330,6 @@ try:
             scan_article(article_url)
         log('Finished scanning %s in %d min.\n' %
             (board + str(Constants.STARTING_PAGE), int(common.get_elapsed_sec(board_start_time) / 60)), False)
-
 except Exception as e:
     log('[Error] %s\n[Traceback]\n%s' % (e, traceback.format_exc()))
 finally:
