@@ -68,15 +68,17 @@ def get_free_proxies():
     return proxies
 
 
-def get_proxy_session(sampling_url: str, log_path: str):
+def get_proxy_session(sampling_url: str, log_path: str = None):
     timeout = 3
     session = requests.session()
     try:
         code = session.get(sampling_url, timeout=timeout).status_code
-        if code != 200:
-            log('Error: HTTP response %d.' % code, log_path)
-        print('The url is accessible.')
-        return session
+        if code == 200:
+            print('The url is accessible.')
+            return session
+        else:
+            if log_path:
+                log('Error: HTTP response %d.' % code, log_path)
     except requests.exceptions.ReadTimeout:
         free_proxy_list = get_free_proxies()
         for i, proxy in enumerate(free_proxy_list):
