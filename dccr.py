@@ -377,13 +377,14 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-browser = initiate_browser()
-try:
-    for subdirectory, min_likes_str in Constants.SUBDIRECTORIES_CHAOTIC:
-        process_domain(subdirectory, min_likes=int(min_likes_str),
-                       scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE, excluding=True)
-    for subdirectory, min_likes_str in Constants.SUBDIRECTORIES:
-        process_domain(subdirectory, min_likes=int(min_likes_str),
-                       scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
-finally:
-    browser.quit()
+if __name__ == "__main__":
+    browser = initiate_browser()
+    try:
+        for subdirectory, min_likes_str in Constants.SUBDIRECTORIES_CHAOTIC:
+            process_domain(subdirectory, min_likes=int(min_likes_str),
+                           scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE, excluding=True)
+        for subdirectory, min_likes_str in Constants.SUBDIRECTORIES:
+            process_domain(subdirectory, min_likes=int(min_likes_str),
+                           scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
+    finally:
+        browser.quit()

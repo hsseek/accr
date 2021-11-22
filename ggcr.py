@@ -310,27 +310,28 @@ def check_auth(driver: webdriver.Chrome, url: str):
         return True
 
 
-browser = initiate_browser()
-try:
-    for board_name, board_min_likes, extension_str in Constants.BOARDS:
-        board = Constants.PAGE_PLACEHOLDER.replace('%s', board_name.strip('/'))
-        for trial in range(2):
-            is_auth = check_auth(browser, board)
-            if is_auth:
-                break  # No (further) authentication required. Good to go.
-        else:
-            break  # Cannot retrieve authentication. Nothing to do.
-        target_extensions = tuple(extension_str.split('-'))
-        board_start_time = datetime.now()
-        scan_list = get_entries_to_scan(board, target_extensions, int(board_min_likes),
-                                        Constants.SCANNING_SPAN, Constants.STARTING_PAGE)
-        for article_no in scan_list:
-            common.pause_briefly()
-            article_url = Constants.ROOT_DOMAIN + board_name + article_no
-            scan_article(article_url)
-        log('Finished scanning %s in %d min.\n' %
-            (board + str(Constants.STARTING_PAGE), int(common.get_elapsed_sec(board_start_time) / 60)), False)
-except Exception as e:
-    log('[Error] %s\n[Traceback]\n%s' % (e, traceback.format_exc()))
-finally:
-    browser.quit()
+if __name__ == "__main__":
+    browser = initiate_browser()
+    try:
+        for board_name, board_min_likes, extension_str in Constants.BOARDS:
+            board = Constants.PAGE_PLACEHOLDER.replace('%s', board_name.strip('/'))
+            for trial in range(2):
+                is_auth = check_auth(browser, board)
+                if is_auth:
+                    break  # No (further) authentication required. Good to go.
+            else:
+                break  # Cannot retrieve authentication. Nothing to do.
+            target_extensions = tuple(extension_str.split('-'))
+            board_start_time = datetime.now()
+            scan_list = get_entries_to_scan(board, target_extensions, int(board_min_likes),
+                                            Constants.SCANNING_SPAN, Constants.STARTING_PAGE)
+            for article_no in scan_list:
+                common.pause_briefly()
+                article_url = Constants.ROOT_DOMAIN + board_name + article_no
+                scan_article(article_url)
+            log('Finished scanning %s in %d min.\n' %
+                (board + str(Constants.STARTING_PAGE), int(common.get_elapsed_sec(board_start_time) / 60)), False)
+    except Exception as e:
+        log('[Error] %s\n[Traceback]\n%s' % (e, traceback.format_exc()))
+    finally:
+        browser.quit()

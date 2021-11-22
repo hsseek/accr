@@ -343,28 +343,29 @@ def process_domain(scan_list: [], placeholder: str, domain_tag: str, scanning_sp
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-main_scan_list = []
-for subdirectory, directory_tag in Constants.SUBDIRECTORIES:
-    browser = initiate_browser()
-    try:
-        # Append to the scanning list.
-        process_domain(main_scan_list, Constants.ROOT_DOMAIN + subdirectory, directory_tag,
-                       scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
-    finally:
-        browser.quit()
+if __name__ == "__main__":
+    main_scan_list = []
+    for subdirectory, directory_tag in Constants.SUBDIRECTORIES:
+        browser = initiate_browser()
+        try:
+            # Append to the scanning list.
+            process_domain(main_scan_list, Constants.ROOT_DOMAIN + subdirectory, directory_tag,
+                           scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
+        finally:
+            browser.quit()
 
-# Then, scan the list
-log('%d articles to scan.' % len(main_scan_list), False)
-for n, article_info in enumerate(main_scan_list):
-    common.pause_briefly()
-    scan_start_time = datetime.now()
-    for j in range(3):  # If the scan is not successful, just try it again. Interception is whimsical.
-        is_article_scan_successful = scan_article(url=article_info[0], tag_name=article_info[1])
-        if is_article_scan_successful:
-            break
+    # Then, scan the list
+    log('%d articles to scan.' % len(main_scan_list), False)
+    for n, article_info in enumerate(main_scan_list):
+        common.pause_briefly()
+        scan_start_time = datetime.now()
+        for j in range(3):  # If the scan is not successful, just try it again. Interception is whimsical.
+            is_article_scan_successful = scan_article(url=article_info[0], tag_name=article_info[1])
+            if is_article_scan_successful:
+                break
+            else:
+                print('Warning: processing failed.')
         else:
-            print('Warning: processing failed.')
-    else:
-        log('Error: Processing failed multiple times. Move to the next article.')
-    log("(%d/%d) Processing finished in %.1f min." %
-        (n + 1, len(main_scan_list), (common.get_elapsed_sec(scan_start_time) / 60)), False)
+            log('Error: Processing failed multiple times. Move to the next article.')
+        log("(%d/%d) Processing finished in %.1f min." %
+            (n + 1, len(main_scan_list), (common.get_elapsed_sec(scan_start_time) / 60)), False)

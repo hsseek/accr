@@ -211,4 +211,5 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
         log('[Error] %s\n[Traceback]\n%s' % (normal_domain_exception, traceback.format_exc(),))
 
 
-process_domain(Constants.ROOT_DOMAIN, scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
+if __name__ == "__main__":
+    process_domain(Constants.ROOT_DOMAIN, scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
