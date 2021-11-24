@@ -24,7 +24,7 @@ class Constants:
     # urls and paths in String
     ROOT_DOMAIN = common.read_from_file('GG_ROOT_DOMAIN.pv')
     PAGE_PLACEHOLDER = ROOT_DOMAIN + '/index.php?mid=%s&page='
-    BOARDS = common.build_tuple_of_tuples('GG_SUBDIRECTORIES.pv')
+    SUBDIRECTORIES = common.build_tuple_of_tuples('GG_SUBDIRECTORIES.pv')
     ACCOUNT, PASSWORD = common.build_tuple('GG_ACCOUNT.pv')
 
     # Parsing and file processing
@@ -114,6 +114,12 @@ def get_entries_to_scan(placeholder: str, extensions: (), min_likes: int, scanni
 
 
 def scan_article(url: str):
+    for trial in range(2):
+        is_auth = check_auth(browser, url)
+        if is_auth:
+            break  # No (further) authentication required. Good to go.
+    else:
+        return
     browser.get(url)
     soup = BeautifulSoup(browser.page_source, Constants.HTML_PARSER)
 
@@ -133,7 +139,7 @@ def scan_article(url: str):
         likes = likes_tag.next.next.string
     except Exception as likes_exception:
         likes = '0'
-        log('Error: Cannot retrieve likes from %s.(%s)' % (url, likes_exception), False)
+        log('Error: Cannot retrieve likes.(%s)' % likes_exception, False)
 
     local_name = __get_local_name(article_title, url, likes)
 
@@ -142,7 +148,7 @@ def scan_article(url: str):
     if cate_tag:
         cate = cate_tag.string
     else:
-        log('Error: Cannot retrieve cate.(%s)' % url, False)
+        log('Error: Cannot retrieve cate.', False)
         cate = 'err'
     log('(%s) %s <%s>' % (likes, cate, article_title), False)
 
@@ -154,7 +160,7 @@ def scan_article(url: str):
         try:
             found_img_source = iterate_img_source_tags(img_source_tags, local_name + img_filename_tag)
             if not found_img_source:
-                log('Error: <img> tag present, but no source found.\n(%s)' % url)
+                log('Error: <img> tag present, but no source found.', False)
         except Exception as img_source_err:
             log('Error: %s\n%s\n[Traceback]\n%s' % (img_source_err, url, traceback.format_exc()))
 
@@ -172,20 +178,20 @@ def scan_article(url: str):
             if video_source_tags:
                 found_video_source = iterate_video_source_tags(video_source_tags, local_name + video_filename_tag)
                 if is_video_expected and not found_video_source:
-                    log('Error: <video> tag present, but no source found.\n(%s)' % url)
+                    log('Error: <video> tag present, but no source found.', False)
         except selenium.common.exceptions.TimeoutException:
             pass
         except selenium.common.exceptions.NoSuchElementException:
             pass
         except Exception as video_source_err:
-            log('Error: %s\n(%s)\n[Traceback]\n%s' % (video_source_err, url, traceback.format_exc()))
+            log('Error: %s\n[Traceback]\n%s' % (video_source_err, traceback.format_exc()))
 
         # Usual gfycatWrap not present: check unusual sources present.
         if soup.select('video'):
             video_source_tags = soup.select('video')
             found_video_source = iterate_video_source_tags(video_source_tags, local_name + video_filename_tag)
             if is_video_expected and not found_video_source:
-                log('Error: <video> tag present, but no source found.\n(%s)' % url)
+                log('Error: <video> tag present, but no source found.', False)
         elif soup.select('iframe'):
             iframe_source_tags = soup.select('iframe')
             # Remove ad sources
@@ -198,9 +204,10 @@ def scan_article(url: str):
             if source_tags_no_ads:
                 found_video_source = iterate_video_source_tags(source_tags_no_ads, local_name + video_filename_tag)
                 if is_video_expected and not found_video_source:
-                    log('Error: <video> tag present, but no source found.\n(%s)' % url)
+                    log('Error: <video> tag present, but no source found.', False)
         else:
-            log('Video player not found.\n(%s).' % url)
+            if is_video_expected:
+                log('Video player not found.')
     log('Finished scanning article in %.1f".\n' % common.get_elapsed_sec(article_start_time), False)
 
 
@@ -310,27 +317,32 @@ def check_auth(driver: webdriver.Chrome, url: str):
         return True
 
 
+def process_subdirectories(subdirectories: ()):
+    for board_name, board_min_likes, extension_str in subdirectories:
+        board = Constants.PAGE_PLACEHOLDER.replace('%s', board_name.strip('/'))
+        for trial in range(2):
+            is_auth = check_auth(browser, board)
+            if is_auth:
+                break  # No (further) authentication required. Good to go.
+        else:
+            break  # Cannot retrieve authentication. Nothing to do.
+        target_extensions = tuple(extension_str.split('-'))
+        board_start_time = datetime.now()
+        scan_list = get_entries_to_scan(board, target_extensions, int(board_min_likes),
+                                        Constants.SCANNING_SPAN, Constants.STARTING_PAGE)
+        for article_no in scan_list:
+            common.pause_briefly()
+            article_url = Constants.ROOT_DOMAIN + board_name + article_no
+            scan_article(article_url)
+        log('Finished scanning %s in %d min.\n' %
+            (board + str(Constants.STARTING_PAGE), int(common.get_elapsed_sec(board_start_time) / 60)), False)
+
+
 if __name__ == "__main__":
     browser = initiate_browser()
     try:
-        for board_name, board_min_likes, extension_str in Constants.BOARDS:
-            board = Constants.PAGE_PLACEHOLDER.replace('%s', board_name.strip('/'))
-            for trial in range(2):
-                is_auth = check_auth(browser, board)
-                if is_auth:
-                    break  # No (further) authentication required. Good to go.
-            else:
-                break  # Cannot retrieve authentication. Nothing to do.
-            target_extensions = tuple(extension_str.split('-'))
-            board_start_time = datetime.now()
-            scan_list = get_entries_to_scan(board, target_extensions, int(board_min_likes),
-                                            Constants.SCANNING_SPAN, Constants.STARTING_PAGE)
-            for article_no in scan_list:
-                common.pause_briefly()
-                article_url = Constants.ROOT_DOMAIN + board_name + article_no
-                scan_article(article_url)
-            log('Finished scanning %s in %d min.\n' %
-                (board + str(Constants.STARTING_PAGE), int(common.get_elapsed_sec(board_start_time) / 60)), False)
+        # process_subdirectories(Constants.SUBDIRECTORIES)
+        scan_article('https://ggoorr.net/adult/12527878')
     except Exception as e:
         log('[Error] %s\n[Traceback]\n%s' % (e, traceback.format_exc()))
     finally:
