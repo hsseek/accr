@@ -341,8 +341,7 @@ def process_subdirectories(subdirectories: ()):
 if __name__ == "__main__":
     browser = initiate_browser()
     try:
-        # process_subdirectories(Constants.SUBDIRECTORIES)
-        scan_article('https://ggoorr.net/adult/12527878')
+        process_subdirectories(Constants.SUBDIRECTORIES)
     except Exception as e:
         log('[Error] %s\n[Traceback]\n%s' % (e, traceback.format_exc()))
     finally:
