@@ -147,5 +147,4 @@ class Constants:
     DRIVER_PATH = read_from_file('DRIVER_PATH.pv')
     DUMP_PATH = read_from_file('DUMP_PATH.pv')
     IGNORED_TITLE_PATTERNS = build_tuple('IGNORED_TITLE_PATTERNS.pv')
-    IGNORED_FILE_NAME_PATTERNS = build_tuple('IGNORED_FILENAMES.pv')
     PROHIBITED_CHARS = (' ', '.', '/')

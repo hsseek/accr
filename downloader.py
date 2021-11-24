@@ -13,12 +13,48 @@ def log(message: str, has_tst: bool = True):
     common.log(message, path, has_tst)
 
 
-def iterate_source_tags(source_tags, file_name, from_article_url):
+def extract_extension(source_url: str) -> str:
+    content_type_attribute = 'content-type'
+
+    # Primary target: filetype from the html header
+    try:
+        header = requests.head(source_url).headers
+        if content_type_attribute in header:
+            header = header[content_type_attribute]
+            try:
+                category, filetype = header.split('/')
+            except ValueError:
+                filetype = header
+                category = None
+            if filetype == 'quicktime':  # 'video/quicktime' represents a mov file.
+                filetype = 'mov'
+
+            # Check the file type.
+            if filetype in EXTENSION_CANDIDATES:
+                return filetype
+            elif category == 'text':
+                log('Skipping a text link: %s' % source_url)
+                return ''  # No need of further investigation.
+            else:
+                log('Error: unexpected %s/%s\n(Source: %s)' %
+                    (category, filetype, source_url))
+    except Exception as header_exception:
+        log('Error: cannot process the header.(%s)\n(Source: %s)' % (header_exception, source_url))
+
+    # After all, the extension has not been retrieved.
+    # Try extract the extension from the url. (e.g. https://www.domain.com/video.mp4)
+    chunk = source_url.split('.')[-1]
+    if chunk in EXTENSION_CANDIDATES:
+        return chunk
+    else:
+        log('Error: extension cannot be specified.\n(Source: %s)' % source_url)
+        return ''
+
+
+def iterate_source_tags(source_tags, file_name, url_referring_article, ignored_filenames: () = None):
     src_attribute = 'src'
     link_attribute = 'href'
     source_tag = 'source'
-    content_type_attribute = 'content-type'
-    extension = 'tmp'
 
     for i, tag in enumerate(source_tags):
         raw_sources = []  # All the sources included in the tag
@@ -33,51 +69,27 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
 
         # Now process the collected sources.
         if len(raw_sources) == 0:
-            log('Error: Tag present, but no source found.\n(Tag: %s)\n(%s: Article)' % (tag, from_article_url))
+            log('Error: Tag present, but no source found.\n(Tag: %s)\n(%s: Article)' % (tag, url_referring_article))
         for raw_source in raw_sources:
             source_url = 'https:' + raw_source if raw_source.startswith('//') else raw_source
             # Check the ignored file name list
-            for ignored_pattern in common.Constants.IGNORED_FILE_NAME_PATTERNS:
-                if ignored_pattern in source_url:
-                    log('Ignoring based on file name pattern: %s.\n(Article: %s' % (source_url, from_article_url))
-                    break  # Skip this source tag.
-            else:  # Retrieve the extension.
-                try:
-                    header = requests.head(source_url).headers
-                    if content_type_attribute in header:
-                        header = header[content_type_attribute]
-                        try:
-                            category, filetype = header.split('/')
-                        except ValueError:
-                            filetype = header
-                            category = None
-                        if filetype == 'quicktime':  # 'video/quicktime' represents a mov file.
-                            filetype = 'mov'
-                        # Check the file type.
-                        if category == 'text':
-                            log('A text link: %s\n(Article: %s)' % (source_url, from_article_url))
-                            continue  # Skip this source tag.
+            if ignored_filenames:
+                for ignored_pattern in ignored_filenames:
+                    if ignored_pattern in source_url:
+                        log('Ignoring based on file name: %s.\n(Article: %s)' % (source_url, url_referring_article))
+                        break  # Skip this source tag.
+                else:  # Retrieve the extension.
+                    download_source(file_name, i, source_url)
+            else:
+                download_source(file_name, i, source_url)
 
-                        if filetype in EXTENSION_CANDIDATES:
-                            extension = filetype
-                        else:
-                            log('Error: unexpected %s/%s\n(Article: %s)\n(Source: %s)' %
-                                (category, filetype, from_article_url, source_url))
-                except Exception as header_exception:
-                    log('Error: cannot process the header.(%s)\n(Tag: %s)\n(%s: Article)' %
-                        (header_exception, tag, from_article_url))
 
-                if extension == 'tmp':  # After all, the extension has not been updated.
-                    # Try extract the extension from the url. (e.g. https://www.domain.com/video.mp4)
-                    chunk = source_url.split('.')[-1]
-                    if chunk in EXTENSION_CANDIDATES:
-                        extension = chunk
-                    else:
-                        log('Error: extension cannot be specified.\n(Article: %s)\n(Source: %s)' %
-                            (from_article_url, source_url))
-                print('%s-*.%s on %s' % (file_name, extension, source_url))
-                # Download the file.
-                download(source_url, '%s-%03d.%s' % (file_name, i, extension))
+def download_source(file_name, i, source_url):
+    extension = extract_extension(source_url)
+    if extension:
+        print('%s-*.%s on %s' % (file_name, extension, source_url))
+        # Download the file.
+        download(source_url, '%s-%03d.%s' % (file_name, i, extension))
 
 
 def wait_finish_downloading(temp_dir_path: str, log_path: str, loading_sec: float, trial: int = 0,

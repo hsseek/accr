@@ -9,9 +9,9 @@ import downloader
 
 
 class Constants:
-    NORMAL_DOMAINS = common.build_tuple_of_tuples('AC_NORMAL_DOMAINS.pv')
-    PROXY_DOMAINS = common.build_tuple_of_tuples('AC_PROXY_DOMAINS.pv')
-    IGNORED_URLS = common.build_tuple('AC_IGNORED_URLS.pv')
+    SUBDIRECTORIES = common.build_tuple_of_tuples('AC_SUBDIRECTORIES.pv')
+    IGNORED_LINKS = common.build_tuple('AC_IGNORED_LINKS.pv')
+    IGNORED_FILE_NAMES = common.build_tuple('AC_IGNORED_FILENAMES.pv')
 
     TOO_YOUNG_DAY = 1
     TOO_OLD_DAY = 3
@@ -70,7 +70,7 @@ def scan_article(url: str):
     img_source_tags = soup.select(body_css_selector + 'img')
     if img_source_tags:  # Images present
         try:
-            downloader.iterate_source_tags(img_source_tags, local_name + '-i', url)
+            downloader.iterate_source_tags(img_source_tags, local_name + '-i', url, Constants.IGNORED_FILE_NAMES)
         except Exception as img_source_exception:
             log('Error: %s\n%s\n[Traceback]\n%s' % (img_source_exception, url, traceback.format_exc()))
 
@@ -87,7 +87,7 @@ def scan_article(url: str):
     if link_tags:
         for source in link_tags:
             if source.has_attr(link_attr):
-                for ignored_url in Constants.IGNORED_URLS:
+                for ignored_url in Constants.IGNORED_LINKS:
                     if ignored_url in source[link_attr]:
                         log('Ignoring based on url: %s\n(Article:%s)' % (source[link_attr], url))
                         break
@@ -181,6 +181,4 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
 
 
 if __name__ == "__main__":
-    process_domain(Constants.NORMAL_DOMAINS, scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
-    time.sleep(random.uniform(10, 120))
-    process_domain(Constants.PROXY_DOMAINS, scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
+    process_domain(Constants.SUBDIRECTORIES, Constants.SCANNING_SPAN, Constants.STARTING_PAGE)

@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 class Constants:
     EXTENSION_CANDIDATES = ('jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp', 'mp4', 'webm', 'mov')
     ROOT_DOMAIN = common.build_tuple('12_DOMAINS.pv')
-    IGNORED_URLS = common.build_tuple('12_IGNORED_URLS.pv')
+    IGNORED_LINKS = common.build_tuple('12_IGNORED_LINKS.pv')
 
     TOO_YOUNG_DAY = 0
     TOO_OLD_DAY = 2
@@ -132,7 +132,7 @@ def scan_article(url: str):
     if link_tags:
         for source in link_tags:
             if source.has_attr(link_attr):
-                for ignored_url in Constants.IGNORED_URLS:
+                for ignored_url in Constants.IGNORED_LINKS:
                     if ignored_url in source[link_attr]:
                         break
                 else:
