@@ -50,13 +50,11 @@ def __get_local_name(doc_title: str, url: str):
     return formatted_title + '-' + doc_id
 
 
-# Peculiar urls present. Do not use downloader.iterate_source_tag
+# Unexpected urls present. Do not use downloader.iterate_source_tag
 def iterate_source_tags(source_tags, file_name, from_article_url):
     attribute = None
     src_attribute = 'src'
     link_attribute = 'href'
-    content_type_attribute = 'content-type'
-    extension = 'tmp'
 
     for i, tag in enumerate(source_tags):
         if tag.has_attr(src_attribute):  # e.g. <img src = "...">
@@ -68,39 +66,8 @@ def iterate_source_tags(source_tags, file_name, from_article_url):
             source_url = Constants.ROOT_DOMAIN[0] + raw_source\
                 if raw_source.startswith('/data') else raw_source
 
-            # Check the ignored file name list
-            for ignored_pattern in common.Constants.IGNORED_FILE_NAME_PATTERNS:
-                if ignored_pattern in source_url:
-                    log('Ignored %s.\n(Article: %s)' % (source_url, from_article_url))
-                    continue  # Skip this source tag.
-
-            # Retrieve the extension.
-            header = requests.head(source_url).headers
-            if content_type_attribute in header:
-                category, filetype = header[content_type_attribute].split('/')
-                if filetype == 'quicktime':  # 'video/quicktime' represents a mov file.
-                    filetype = 'mov'
-                # Check the file type.
-                if category == 'text':
-                    log('A text link: %s\n(Article: %s)' % (source_url, from_article_url))
-                    continue  # Skip this source tag.
-
-                if filetype in Constants.EXTENSION_CANDIDATES:
-                    extension = filetype
-                else:
-                    log('Error: unexpected %s/%s\n(Article: %s)\n(Source: %s)' %
-                        (category, filetype, from_article_url, source_url))
-                    # Try extract the extension from the url. (e.g. https://www.domain.com/video.mp4)
-                    chunk = source_url.split('.')[-1]
-                    if chunk in Constants.EXTENSION_CANDIDATES:
-                        extension = chunk
-
-            if extension == 'tmp':  # After all, the extension has not been updated.
-                log('Error: extension cannot be specified.\n(Article: %s)\n(Source: %s)' %
-                    (from_article_url, source_url))
-            print('%s-*.%s on %s' % (file_name, extension, source_url))
-            # Download the file.
-            downloader.download(source_url, '%s-%03d.%s' % (file_name, i, extension))
+            # Retrieve the extension and download the file
+            downloader.download_source(file_name, i, source_url)
         else:
             log('Error: Tag present, but no source found.\n(Tag: %s)\n(%s: Article)' % (tag, from_article_url))
 

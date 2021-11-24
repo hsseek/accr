@@ -33,8 +33,7 @@ def extract_extension(source_url: str) -> str:
             if filetype in EXTENSION_CANDIDATES:
                 return filetype
             elif category == 'text':
-                log('Skipping a text link: %s' % source_url)
-                return ''  # No need of further investigation.
+                log('Warning: a text page(%s)' % source_url)
             else:
                 log('Error: unexpected %s/%s\n(Source: %s)' %
                     (category, filetype, source_url))
