@@ -99,7 +99,7 @@ def mark_and_move(current_path: str, destination_path: str):
         os.rename(current_path + file, destination_path + 'err-' + file)
 
 
-def scan_article(url: str):
+def scan_article(url: str) -> bool:
     log('\nProcessing %s' % url)
     domain_tag = 'dc'
 
@@ -131,7 +131,7 @@ def scan_article(url: str):
         formatted_file_name = '%s-%s-%s-%s-%s' % \
                               (domain_tag, channel_name, formatted_likes, formatted_title, article_no)
     except Exception as title_exception:
-        log('Error: cannot process the article title.(%s)' % title_exception, has_tst=False)
+        log('Error: cannot process the article information.(%s)' % title_exception, has_tst=False)
         # Use the article number as the file name.
         formatted_file_name = domain_tag + '-' + __get_no_from_url(url)
 
@@ -142,12 +142,14 @@ def scan_article(url: str):
         if len(os.listdir(Constants.TMP_DOWNLOAD_PATH)) > 0:
             mark_and_move(Constants.TMP_DOWNLOAD_PATH, Constants.DESTINATION_PATH)
             log('Error: Files left after download failure.')
-        return  # Nothing to do.
+        return False
 
     try:
         __format_downloaded_file(formatted_file_name)
+        return True
     except Exception as post_download_exception:
         log('Error: cannot process downloaded files.(%s)' % post_download_exception)
+        return False
 
 
 # Process the downloaded file. (Mostly, a zip file or an image)
@@ -369,7 +371,14 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
             common.pause_briefly()
             article_url = gall.replace('lists', 'view').replace('page', 'no').replace('%d', str(article_no))
             scan_start_time = datetime.now()
-            scan_article(article_url)
+
+            for k in range(3):
+                if k > 1:
+                    log('Retry scanning.')
+                is_scan_successful = scan_article(article_url)
+                if is_scan_successful:
+                    break
+
             log('Scanned %d/%d articles(%.1f")' %
                 (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)), False)
         log('Finished scanning %s in %d min.\n' % (gall, int(common.get_elapsed_sec(gall_start_time) / 60)), False)

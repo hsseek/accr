@@ -120,7 +120,9 @@ def scan_article(url: str):
             break  # No (further) authentication required. Good to go.
     else:
         return
-    browser.get(url)
+
+    if browser.current_url != url:
+        browser.get(url)
     soup = BeautifulSoup(browser.page_source, Constants.HTML_PARSER)
 
     # Retrieve the title.
