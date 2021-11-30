@@ -60,7 +60,7 @@ def initiate_browser():
         "download.prompt_for_download": False
     })
     options.add_argument('headless')
-    options.add_argument('disable-gpu')
+    # options.add_argument('disable-gpu')
     # options.add_experimental_option("detach", True)
     driver = webdriver.Chrome(service=service, options=options)
     return driver

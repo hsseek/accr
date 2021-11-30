@@ -61,7 +61,7 @@ def initiate_browser():
     })
     options.add_argument('--proxy-server=socks5://127.0.0.1:9050')
     options.add_argument('headless')
-    options.add_argument('disable-gpu')
+    # options.add_argument('disable-gpu')
     # options.add_experimental_option("detach", True)
     driver = webdriver.Chrome(service=service, options=options)
     driver.set_page_load_timeout(120)
