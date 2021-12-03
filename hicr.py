@@ -3,7 +3,7 @@ import zipfile
 from glob import glob
 import selenium.common.exceptions
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
+# from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 import random
 import time
@@ -52,8 +52,8 @@ def __get_date_difference(tst_str: str) -> int:
 
 
 def initiate_browser():
-    # A chrome web driver with headless option
-    service = Service(common.Constants.DRIVER_PATH)
+    # A Chrome web driver with headless option
+    # service = Service(common.Constants.DRIVER_PATH)
     options = webdriver.ChromeOptions()
     options.add_experimental_option("prefs", {
         "download.default_directory": Constants.TMP_DOWNLOAD_PATH,
@@ -63,7 +63,7 @@ def initiate_browser():
     options.add_argument('headless')
     # options.add_argument('disable-gpu')
     # options.add_experimental_option("detach", True)
-    driver = webdriver.Chrome(service=service, options=options)
+    driver = webdriver.Chrome(executable_path=common.Constants.DRIVER_PATH, options=options)
     driver.set_page_load_timeout(120)
     return driver
 
@@ -184,7 +184,7 @@ def wait_for_download_start(dl_browser: webdriver.Chrome, loading_sec: float):
     progress_value_attr = 'aria-valuenow'
 
     # The timeout: 30 ~ 3300 + a
-    timeout = max(30.0, loading_sec * 300)  # Generous, as a stalled script will return False anyways.
+    timeout = max(30.0, loading_sec * 300)  # Generous, as a stalled script will return False anyway.
     if timeout > 3300:
         timeout = 3300 * random.uniform(1, 1.2)
 
@@ -218,7 +218,7 @@ def wait_for_download_start(dl_browser: webdriver.Chrome, loading_sec: float):
                     consecutive_failures += 1
                 else:  # i.e., 10 consecutive failures.
                     log('Warning: Download progress stopped.')
-                    return False  # It is sure that download stopped.
+                    return False  # It is certain that download stopped.
         elif has_started:
             return True  # Download button visible again. Finished downloading.
         # else: Download has not started. Wait to start download.
@@ -345,6 +345,7 @@ def process_domain(scan_list: [], placeholder: str, domain_tag: str, scanning_sp
 
 if __name__ == "__main__":
     main_scan_list = []
+    buffer_list = []
     for subdirectory, directory_tag in Constants.SUBDIRECTORIES:
         browser = initiate_browser()
         try:
@@ -355,17 +356,24 @@ if __name__ == "__main__":
             browser.quit()
 
     # Then, scan the list
-    log('%d articles to scan.' % len(main_scan_list), False)
-    for n, article_info in enumerate(main_scan_list):
-        common.pause_briefly()
-        scan_start_time = datetime.now()
-        for j in range(3):  # If the scan is not successful, just try it again. Interception is whimsical.
-            is_article_scan_successful = scan_article(url=article_info[0], tag_name=article_info[1])
-            if is_article_scan_successful:
-                break
+    for k in range(3):
+        log('%d articles to scan.' % len(main_scan_list), False)
+        for n, article_info in enumerate(main_scan_list):
+            common.pause_briefly()
+            scan_start_time = datetime.now()
+            for j in range(2):  # If the scan is not successful, just try it again. Interception is whimsical.
+                is_article_scan_successful = scan_article(url=article_info[0], tag_name=article_info[1])
+                if is_article_scan_successful:
+                    break
+                else:
+                    print('Warning: processing failed.')
             else:
-                print('Warning: processing failed.')
+                log('Error: Processing failed multiple times. Move to the next article.')
+                buffer_list.append(article_info)
+            log("(%d/%d) Processing finished in %.1f min.\n" %
+                (n + 1, len(main_scan_list), (common.get_elapsed_sec(scan_start_time) / 60)), False)
+        if buffer_list:  # Failed downloads exist.
+            main_scan_list = buffer_list
+            buffer_list = []
         else:
-            log('Error: Processing failed multiple times. Move to the next article.')
-        log("(%d/%d) Processing finished in %.1f min." %
-            (n + 1, len(main_scan_list), (common.get_elapsed_sec(scan_start_time) / 60)), False)
+            break

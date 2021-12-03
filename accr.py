@@ -1,5 +1,4 @@
 import random
-import time
 import traceback
 from datetime import datetime
 import requests
@@ -137,7 +136,7 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int, pa
                         else:  # Mature
                             if int(likes) >= min_likes:  # Compare likes first: a cheaper process
                                 try:
-                                    title = row.select_one('div.vrow-top > span.vcol > span.title').contents[0].strip()
+                                    title = row.select_one('div.vrow-top > span.vcol > span.title').string.strip()
                                 except Exception as title_exception:
                                     title = '%05d' % random.randint(1, 99999)
                                     log('Error: cannot retrieve article title of row %d.(%s)\n(%s)' %

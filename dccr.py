@@ -4,7 +4,7 @@ from glob import glob
 
 import selenium.common.exceptions
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
+# from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
@@ -52,8 +52,8 @@ def __get_date_difference(tst_str: str) -> int:
 
 
 def initiate_browser():
-    # A chrome web driver with headless option
-    service = Service(common.Constants.DRIVER_PATH)
+    # A Chrome web driver with headless option
+    # service = Service(common.Constants.DRIVER_PATH)
     options = webdriver.ChromeOptions()
     options.add_experimental_option("prefs", {
         "download.default_directory": Constants.TMP_DOWNLOAD_PATH,
@@ -61,8 +61,7 @@ def initiate_browser():
     })
     options.add_argument('headless')
     # options.add_argument('disable-gpu')
-    # options.add_experimental_option("detach", True)
-    driver = webdriver.Chrome(service=service, options=options)
+    driver = webdriver.Chrome(executable_path=common.Constants.DRIVER_PATH, options=options)
     return driver
 
 
