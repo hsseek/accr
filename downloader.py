@@ -137,6 +137,7 @@ def download(url: str, local_name: str):
                     f.write(chunk)
                     f.flush()
                     os.fsync(f.fileno())
+        print('file://%s' % file_path)
     else:  # HTTP status code 4XX/5XX
         log("Error: Download failed.(%s)" % url, False)
 

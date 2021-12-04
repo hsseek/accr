@@ -1,7 +1,6 @@
 import traceback
 from datetime import datetime
 
-import requests
 import selenium.common.exceptions
 from selenium import webdriver
 # from selenium.webdriver.chrome.service import Service
@@ -25,6 +24,7 @@ class Constants:
     ROOT_DOMAIN = common.read_from_file('GG_ROOT_DOMAIN.pv')
     PAGE_PLACEHOLDER = ROOT_DOMAIN + '/index.php?mid=%s&page='
     SUBDIRECTORIES = common.build_tuple_of_tuples('GG_SUBDIRECTORIES.pv')
+    IGNORED_LINKS = common.build_tuple('GG_IGNORED_LINKS.pv')
     ACCOUNT, PASSWORD = common.build_tuple('GG_ACCOUNT.pv')
 
     # Parsing and file processing
@@ -228,31 +228,20 @@ def __get_local_name(article_title: str, url: str, likes: str):
 def iterate_img_source_tags(source_tags, file_name) -> bool:
     has_source = False
     src_attribute = 'src'
-    content_type_attribute = 'content-type'
-    extension = 'tmp'
 
     for i, tag in enumerate(source_tags):
         if tag.has_attr(src_attribute):
             if not has_source:
                 has_source = True
             source_url = tag[src_attribute]
-
-            # Retrieve the extension.
-            chunk = source_url.split('.')[-1]
-            if chunk in Constants.EXTENSION_CANDIDATES:
-                extension = chunk
+            for ignored_link in Constants.IGNORED_LINKS:
+                if ignored_link in source_url:
+                    print('Ignoring %s' % source_url)
+                    break  # Skip the tag.
             else:
-                header = requests.head(source_url).headers
-                if content_type_attribute in header:
-                    category, extension = header[content_type_attribute].split('/')
-                    if extension not in Constants.EXTENSION_CANDIDATES:
-                        log('Error: unexpected %s/%s\n(%s)' % (category, extension, source_url))
-
-            if extension == 'tmp':  # The extension not updated.
-                log('Error: extension cannot be specified.\n(%s)' % source_url)
-
-            # Download the file.
-            downloader.download(source_url, '%s-%02d.%s' % (file_name, i, extension))
+                # Download the file.
+                extension = downloader.extract_extension(source_url)
+                downloader.download(source_url, '%s-%02d.%s' % (file_name, i, extension))
     return has_source
 
 
@@ -261,7 +250,6 @@ def iterate_video_source_tags(source_tags, file_name) -> bool:
     src_attribute = 'src'
     extension = 'mp4'
     raw_sources = []
-    is_numbering = True if len(source_tags) > 1 else False
     for i, tag in enumerate(source_tags):  # Extract source urls from tags
         if tag.has_attr(src_attribute):
             for candidate in Constants.VIDEO_SOURCE_CANDIDATES:
@@ -288,11 +276,14 @@ def iterate_video_source_tags(source_tags, file_name) -> bool:
                         source_url = 'https://thumbs.gfycat.com/%s-mobile.mp4' % video_name
                     else:
                         source_url = raw_source
-                # Download the file.
-                if is_numbering:
-                    downloader.download(source_url, '%s-%02d.%s' % (file_name, i, extension))
+
+                for ignored_link in Constants.IGNORED_LINKS:
+                    if ignored_link in source_url:
+                        print('Ignoring %s' % source_url)
+                        break  # Skip the tag.
                 else:
-                    downloader.download(source_url, '%s.%s' % (file_name, extension))
+                    # Download the file.
+                    downloader.download(source_url, '%s-%02d.%s' % (file_name, i, extension))
     return has_source
 
 
