@@ -45,7 +45,6 @@ def initiate_browser():
     options = webdriver.ChromeOptions()
     options.add_argument('headless')
     # options.add_argument('disable-gpu')
-    # options.add_experimental_option("detach", True)
     driver = webdriver.Chrome(executable_path=common.Constants.DRIVER_PATH, options=options)
     return driver
 
@@ -292,22 +291,22 @@ def check_auth(driver: webdriver.Chrome, url: str):
     driver.get(url)
     soup = BeautifulSoup(driver.page_source, common.Constants.HTML_PARSER)
     if soup.select_one('div.login-header'):  # Login required
+        print('Warning: Login required accessing %s.' % url)
         driver.find_element(By.ID, 'L_user_id').send_keys(Constants.ACCOUNT)
         driver.find_element(By.ID, 'L_password').send_keys(Constants.PASSWORD)
         driver.find_element(By.XPATH, '/html/body/div[1]/div[3]/div/form/span[4]').click()
-        driver_wait = WebDriverWait(driver, timeout)
-        try:
-            driver_wait.until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, 'bd_lst_wrp')))
-            return True  # Page body visible
-        except selenium.common.exceptions.TimeoutException:
-            return False
-        except selenium.common.exceptions.NoSuchElementException:
-            return False
-        except Exception as auth_exception:
-            log('Error: login failed.(%s)' % auth_exception)
-            return False
-    else:  # Logged in
-        return True
+    driver_wait = WebDriverWait(driver, timeout)
+    try:
+        driver_wait.until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, 'bd_lst_wrp')))
+        print('Login successful.')
+        return True  # Page body visible
+    except selenium.common.exceptions.TimeoutException:
+        return False
+    except selenium.common.exceptions.NoSuchElementException:
+        return False
+    except Exception as auth_exception:
+        log('Error: login failed.(%s)' % auth_exception)
+        return False
 
 
 def process_subdirectories(subdirectories: ()):
@@ -318,6 +317,7 @@ def process_subdirectories(subdirectories: ()):
             if is_auth:
                 break  # No (further) authentication required. Good to go.
         else:
+            log('Error: Authentication required accessing %s.' % board)
             break  # Cannot retrieve authentication. Nothing to do.
         target_extensions = tuple(extension_str.split('-'))
         board_start_time = datetime.now()
