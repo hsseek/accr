@@ -66,6 +66,8 @@ def initiate_browser():
 
 
 def login(driver: webdriver.Chrome, current_url: str):
+    logout_btn_class_name = 'logout'
+    change_later_btn_xpath = '//*[@id="contbox"]/div/div[3]/button[3]'
     timeout = 60
     driver.get(Constants.ROOT_DOMAIN)
     driver.find_element(By.NAME, 'user_id').send_keys(Constants.ACCOUNT)
@@ -73,16 +75,23 @@ def login(driver: webdriver.Chrome, current_url: str):
     driver.find_element(By.ID, 'login_ok').click()
     driver_wait = WebDriverWait(driver, timeout)
     try:
-        driver_wait.until(expected_conditions.visibility_of_element_located((By.CLASS_NAME, 'logout')))
-        driver.get(current_url)
+        driver_wait.until(expected_conditions.element_to_be_clickable((By.XPATH, change_later_btn_xpath)))
+        log('Login successful.')
+        driver.find_element(By.XPATH, change_later_btn_xpath).click()
+        if driver.current_url != current_url:
+            driver.get(current_url)
         return True  # Page body visible
-    except selenium.common.exceptions.TimeoutException:
-        return False
-    except selenium.common.exceptions.NoSuchElementException:
-        return False
-    except Exception as auth_exception:
-        log('Error: login failed.(%s)' % auth_exception)
-        return False
+    except Exception as auth_exception_1:
+        print('Warning: login failed.(%s)' % auth_exception_1)
+        try:
+            logout_btn = driver.find_element(By.CLASS_NAME, logout_btn_class_name)
+            if logout_btn:
+                if driver.current_url != current_url:
+                    driver.get(current_url)
+                return True
+        except Exception as auth_exception_2:
+            print('Error: login failed.(%s)' % auth_exception_2)
+            return False
 
 
 def element_exists_by_class(driver: webdriver.Chrome, class_name: str) -> bool:
@@ -109,7 +118,10 @@ def scan_article(url: str) -> bool:
     # Load the article.
     start_time = datetime.now()
     browser.get(url)
-    check_auth(url)
+    is_accessible = check_auth(url)
+    if not is_accessible:
+        return False
+
     loading_sec = common.get_elapsed_sec(start_time)
 
     # Get the information to format the file name.
@@ -187,10 +199,9 @@ def check_auth(url):
             try:
                 is_logged_in = login(browser, url)
                 if is_logged_in and not element_exists_by_class(browser, certify_class_name):
-                    log('Login successful.')
                     return True  # Good to go.
             except Exception as login_exception:
-                log('Login failed.(%s)' % login_exception)
+                log('Authentication failed.(%s)' % login_exception)
         else:
             return False  # Cannot proceed.
 
@@ -331,7 +342,9 @@ def get_entries_to_scan(placeholder: str, min_likes: int, scanning_span: int,
         start_time = datetime.now()  # A timer for monitoring performance
         url = placeholder.replace('%d', str(page))
         browser.get(url)
-        check_auth(url)
+        is_accessible = check_auth(url)
+        if not is_accessible:
+            return tuple(to_scan)
         soup = BeautifulSoup(browser.page_source, common.Constants.HTML_PARSER)
         rows = soup.select('table.gall_list > tbody > tr.us-post')
 

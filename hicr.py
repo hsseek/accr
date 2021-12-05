@@ -102,7 +102,7 @@ def scan_article(url: str, tag_name: str = None):
 
     # Start a new session because clicking Download button companies irritating pop-ups
     article_browser = initiate_browser()
-    log('\nProcessing %s' % url)
+    log('Processing %s' % url)
 
     # A temporary folder to store the zip file.
     common.check_dir_exists(Constants.TMP_DOWNLOAD_PATH)
@@ -356,7 +356,7 @@ if __name__ == "__main__":
 
     # Then, scan the list
     for k in range(3):
-        log('%d articles to scan.' % len(main_scan_list), False)
+        log('%d articles to scan.\n' % len(main_scan_list), False)
         for n, article_info in enumerate(main_scan_list):
             common.pause_briefly()
             scan_start_time = datetime.now()
