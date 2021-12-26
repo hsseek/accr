@@ -98,7 +98,7 @@ def try_access_page(driver: webdriver.Chrome, url: str, trial: int = 2):
 
 
 def scan_article(url: str, tag_name: str = None):
-    min_thumbnail_count = 4
+    min_thumbnail_count = 1
 
     # Start a new session because clicking Download button companies irritating pop-ups
     article_browser = initiate_browser()
@@ -324,7 +324,6 @@ def append_articles_to_scan(scan_list: [], placeholder: str, domain_tag, scannin
 
         log('Page %d took %.1f".' % (page, common.get_elapsed_sec(start_time),), False)
         consecutive_failures = 0  # Reset the consecutive failure count.
-        common.pause_briefly()
         page += 1
     else:  # Now at (max_page + 1) page or (consecutive_failures == MAX_FAILURES)
         if consecutive_failures >= MAX_FAILURE:
@@ -356,9 +355,10 @@ if __name__ == "__main__":
 
     # Then, scan the list
     for k in range(3):
+        if buffer_list:
+            buffer_list = []
         log('%d articles to scan.\n' % len(main_scan_list), False)
         for n, article_info in enumerate(main_scan_list):
-            common.pause_briefly()
             scan_start_time = datetime.now()
             for j in range(2):  # If the scan is not successful, just try it again. Interception is whimsical.
                 is_article_scan_successful = scan_article(url=article_info[0], tag_name=article_info[1])
@@ -373,6 +373,10 @@ if __name__ == "__main__":
                 (n + 1, len(main_scan_list), (common.get_elapsed_sec(scan_start_time) / 60)), False)
         if buffer_list:  # Failed downloads exist.
             main_scan_list = buffer_list
-            buffer_list = []
         else:
             break
+    if buffer_list:
+        log("The followings have not been downloaded: \n")
+        for url in buffer_list:
+            log(url)
+    log("Script finished.")

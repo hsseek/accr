@@ -409,3 +409,4 @@ if __name__ == "__main__":
                            scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
     finally:
         browser.quit()
+        log("Script finished.")

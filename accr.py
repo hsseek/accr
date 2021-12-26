@@ -181,3 +181,4 @@ def process_domain(domains: tuple, scanning_span: int, starting_page: int = 1):
 
 if __name__ == "__main__":
     process_domain(Constants.SUBDIRECTORIES, Constants.SCANNING_SPAN, Constants.STARTING_PAGE)
+    log("Script finished.")

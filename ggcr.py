@@ -339,3 +339,4 @@ if __name__ == "__main__":
         log('[Error] %s\n[Traceback]\n%s' % (e, traceback.format_exc()))
     finally:
         browser.quit()
+        log("Script finished.")
