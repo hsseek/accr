@@ -390,6 +390,8 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
                 is_scan_successful = scan_article(article_url)
                 if is_scan_successful:
                     break
+            else:
+                failed_list.append(article_url)
 
             log('Scanned %d/%d articles(%.1f")' %
                 (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)), False)
@@ -400,6 +402,7 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
 
 if __name__ == "__main__":
     browser = initiate_browser()
+    failed_list = []
     try:
         for subdirectory, min_likes_str in Constants.SUBDIRECTORIES_CHAOTIC:
             process_domain(subdirectory, min_likes=int(min_likes_str),
@@ -409,4 +412,8 @@ if __name__ == "__main__":
                            scanning_span=Constants.SCANNING_SPAN, starting_page=Constants.STARTING_PAGE)
     finally:
         browser.quit()
+        if failed_list:
+            log("The followings have not been downloaded:\n")
+            for failed in failed_list:
+                log(failed)
         log("Script finished.")
