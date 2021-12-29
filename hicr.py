@@ -355,7 +355,8 @@ if __name__ == "__main__":
 
     # Then, scan the list
     for k in range(3):
-        if buffer_list:
+        if buffer_list:  # Failed downloads exist.
+            main_scan_list = buffer_list
             buffer_list = []
         log('%d articles to scan.\n' % len(main_scan_list), False)
         for n, article_info in enumerate(main_scan_list):
@@ -371,12 +372,10 @@ if __name__ == "__main__":
                 buffer_list.append(article_info)
             log("(%d/%d) Processing finished in %.1f min.\n" %
                 (n + 1, len(main_scan_list), (common.get_elapsed_sec(scan_start_time) / 60)), False)
-        if buffer_list:  # Failed downloads exist.
-            main_scan_list = buffer_list
-        else:
+        if not buffer_list:  # All articles have been downloaded.
             break
     if buffer_list:
-        log("The followings have not been downloaded: \n")
-        for url in buffer_list:
-            log(url)
+        log("The followings have not been downloaded: \n", has_tst=False)
+        for article_info in buffer_list:
+            log(article_info[0])
     log("Script finished.")
