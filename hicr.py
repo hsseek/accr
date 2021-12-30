@@ -375,7 +375,9 @@ if __name__ == "__main__":
         if not buffer_list:  # All articles have been downloaded.
             break
     if buffer_list:
-        log("The followings have not been downloaded: \n", has_tst=False)
+        log("The followings have not been downloaded:", has_tst=False)
         for article_info in buffer_list:
-            log(article_info[0])
-    log("Script finished.")
+            url = article_info[0]
+            if url.strip():
+                log(url, has_tst=False)
+    log("\nScript finished.")

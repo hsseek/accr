@@ -413,7 +413,8 @@ if __name__ == "__main__":
     finally:
         browser.quit()
         if failed_list:
-            log("The followings have not been downloaded:\n")
+            log("The followings have not been downloaded:", has_tst=False)
             for failed in failed_list:
-                log(failed)
-        log("Script finished.")
+                if failed.strip():
+                    log(failed, has_tst=False)
+        log("\nScript finished.")
