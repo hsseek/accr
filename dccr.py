@@ -417,4 +417,5 @@ if __name__ == "__main__":
             for failed in failed_list:
                 if failed.strip():
                     log(failed, has_tst=False)
-        log("\nScript finished.")
+            log("\n")
+        log("Script finished.")

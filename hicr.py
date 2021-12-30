@@ -380,4 +380,5 @@ if __name__ == "__main__":
             url = article_info[0]
             if url.strip():
                 log(url, has_tst=False)
-    log("\nScript finished.")
+        log("\n")
+    log("Script finished.")
