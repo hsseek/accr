@@ -391,7 +391,7 @@ def process_domain(gall: str, min_likes: int, scanning_span: int, starting_page:
                 if is_scan_successful:
                     break
             else:
-                failed_list.append(article_url)
+                failed_list.append(article_url.strip())
 
             log('Scanned %d/%d articles(%.1f")' %
                 (i + 1, len(scan_list), common.get_elapsed_sec(scan_start_time)), False)
@@ -415,7 +415,7 @@ if __name__ == "__main__":
         if failed_list:
             log("The followings have not been downloaded:", has_tst=False)
             for failed in failed_list:
-                if failed.strip():
+                if failed:
                     log(failed, has_tst=False)
             log("\n")
         log("Script finished.")
