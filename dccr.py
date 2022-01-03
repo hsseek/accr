@@ -417,5 +417,4 @@ if __name__ == "__main__":
             for failed in failed_list:
                 if failed:
                     log(failed, has_tst=False)
-            log("\n")
         log("Script finished.")
