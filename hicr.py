@@ -36,7 +36,7 @@ def log(message: str, has_tst: bool = True):
 def __get_date_difference(tst_str: str) -> int:
     if ',' in tst_str:
         try:
-            tst = datetime.strptime(tst_str, '%b %d, %Y, %I:%M %p')  # Oct 21, 2021, 3:10 AM
+            tst = datetime.strptime(tst_str, '%b %d, %Y, %I:%M %p')  # Oct 21, 2011, 3:10 AM
             return (datetime.now() - datetime(tst.year, tst.month, tst.day)).days
         except Exception as tst_exception:
             print('Error: %s.' % tst_exception)
@@ -172,6 +172,9 @@ def __move_downloaded_file(tag_name: str):
                 destination = Constants.DESTINATION_PATH + dir_name + '/'
                 zip_ref.extractall(destination)
             os.remove(zip_file_path)  # Remove the zip file.
+            for file_name in os.listdir(destination):
+                if file_name.endswith('.webp'):
+                    common.convert_webp_to_png(destination, file_name)
     except Exception as post_download_exception:
         log('Error: Cannot process downloaded files.(%s)' % post_download_exception)
 
@@ -377,7 +380,7 @@ if __name__ == "__main__":
     if buffer_list:
         log("The followings have not been downloaded:", has_tst=False)
         for article_info in buffer_list:
-            url = article_info[0]
-            if url.strip():
-                log(url, has_tst=False)
+            failed_url = article_info[0]
+            if failed_url.strip():
+                log(failed_url, has_tst=False)
     log("Script finished.")
